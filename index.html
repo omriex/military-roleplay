@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    
+    <title>Military Roleplay</title>
+    <link rel="icon" type="image/png" href="assets/mrp-icon.png">
+
+    <meta property="og:title" content="Military Roleplay" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://omriex.github.io/military-roleplay/" />
+    <meta property="og:image" content="https://omriex.github.io/military-roleplay/assets/mrp-icon.png" />
+    <meta property="og:description" content="Military Roleplay V5" />
+    <meta name="theme-color" content="#e67e22">
+
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Military Roleplay">
+    <meta name="twitter:description" content="Join Military Roleplay!">
+    <meta name="twitter:image" content="https://omriex.github.io/military-roleplay/assets/mrp-icon.png">
+
+    <link rel="stylesheet" href="css/style.css">
+    
+    
+    <script src="gameData.js"></script>
+</head>
+<body>
+
+    <div class="engine-loading-screen" id="master-loading-screen">
+        <svg class="gear-spinner" width="60" height="60" viewBox="0 0 100 100">
+            <circle cx="50" cy="50" r="35" stroke="#e67e22" stroke-width="6" fill="none" />
+            <circle cx="50" cy="50" r="12" fill="#e67e22" />
+        </svg>
+        <h1 style="color: white; margin: 20px 0 5px 0; font-size: 32px; letter-spacing: 5px;">MILITARY ROLEPLAY</h1>
+        <p id="loading-text" style="color: #e67e22; font-weight: bold; letter-spacing: 2px; text-transform: uppercase;">BOOTING ENGINE...</p>
+    </div>
+
+    <div id="play-menu">
+        <h1>Military Roleplay</h1>
+        <input type="text" id="player-name-input" placeholder="ENTER YOUR NAME" maxlength="16" autocomplete="off" spellcheck="false">
+        <button id="play-btn">Play ➔</button>
+    </div>
+
+    <div id="chat-input-container">
+        <input type="text" id="chat-input" maxlength="230" placeholder="TYPE SOMETHING...">
+    </div>
+
+    <div id="system-notification">Message</div>
+
+    <div id="chat-bubbles-container" style="position: absolute; transform: translate(-50%, -100%); pointer-events: none; z-index: 1000; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 8px;"></div>
+
+    <canvas id="gameCanvas"></canvas>
+    
+    <div id="bottom-left-ui-container">
+        <div class="status-box health-box">
+            <div class="status-left">
+                <svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                </svg>
+                <span>Health</span>
+            </div>
+            <span class="status-value">100/100</span>
+        </div>
+        <div class="status-box xp-box">
+            <div class="status-left">
+                <svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                </svg>
+                <span>XP</span>
+            </div>
+            <span class="status-value">0/50</span>
+        </div>
+    </div>
+
+    <div id="bottom-right-ui-container"></div>
+    <div id="game-ui-layer"></div>
+
+    <script type="module" src="js/client.js"></script>
+</body>
+</html>

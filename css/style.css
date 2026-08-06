@@ -1,0 +1,173 @@
+body, html {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    background-color: #050505;
+    color: #fff;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    overflow: hidden;
+    touch-action: none;
+}
+#gameCanvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    display: none;
+    width: 100%;
+    height: 100%;
+    image-rendering: pixelated;
+    z-index: 1;
+}
+#game-ui-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 10;
+    display: none;
+    opacity: 0.97;
+}
+#game-ui-layer > div {
+    pointer-events: auto;
+}
+.engine-loading-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: #0a0a0a;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 999999; 
+}
+.gear-spinner {
+    animation: rotateGear 1.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+@keyframes rotateGear {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+#play-menu {
+    display: none; 
+    position: absolute; 
+    top: 50%; left: 50%; 
+    transform: translate(-50%, -50%); 
+    background: rgba(10, 10, 10, 0.98); 
+    padding: 30px; 
+    border: 1px solid rgba(255, 255, 255, 0.1); 
+    border-radius: 12px; 
+    text-align: center; 
+    width: 320px; 
+    z-index: 9999; 
+    animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+#play-menu h1 { color: #e67e22; margin: 0 0 25px 0; font-weight: 900; letter-spacing: 2px; text-transform: uppercase; font-size: 22px; }
+#player-name-input { width: 100%; padding: 12px; margin-bottom: 20px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; border-radius: 6px; box-sizing: border-box; outline: none; font-size: 14px; text-align: center; font-weight: 600; transition: border-color 0.2s, background 0.2s; }
+#player-name-input:focus { border-color: #e67e22; background: rgba(255,255,255,0.08); }
+#player-name-input:disabled { opacity: 0.5; cursor: not-allowed; }
+#play-btn { background: #28a745; border: none; color: white; padding: 12px; width: 100%; border-radius: 6px; font-weight: 800; font-size: 14px; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; transition: transform 0.1s ease, filter 0.2s; }
+#play-btn:hover { filter: brightness(1.1); transform: translateY(-2px); }
+#play-btn:active { transform: scale(0.95); }
+@keyframes fadeIn {
+    from { opacity: 0; transform: translate(-50%, -45%); }
+    to { opacity: 1; transform: translate(-50%, -50%); }
+}
+#chat-input-container {
+    display: none; 
+    position: absolute; 
+    top: 50%; left: 50%; 
+    transform: translate(-50%, -50%); 
+    z-index: 10001; 
+    width: 350px; 
+    text-align: center; 
+    animation: fadeIn 0.2s ease-out;
+}
+#chat-input {
+    width: 100%; 
+    padding: 12px; 
+    background: rgba(10, 10, 10, 0.9); 
+    border: 1px solid rgba(255,255,255,0.2); 
+    color: white; 
+    border-radius: 6px; 
+    box-sizing: border-box; 
+    outline: none; 
+    font-size: 14px; 
+    font-weight: 600; 
+    font-family: 'Segoe UI', sans-serif;
+    transition: all 0.2s;
+}
+#chat-input:focus {
+    border-color: #e67e22 !important;
+    background: rgba(20, 20, 20, 0.95) !important;
+}
+#bottom-right-ui-container {
+    position: fixed !important;
+    bottom: 20px !important;
+    right: 20px !important;
+    display: none;
+    flex-direction: column !important;
+    align-items: flex-end !important;
+    justify-content: flex-end !important;
+    gap: 10px !important;
+    z-index: 1000 !important;
+    pointer-events: none !important;
+    opacity: 0.97;
+}
+#bottom-left-ui-container {
+    position: fixed !important;
+    bottom: 20px !important;
+    left: 20px !important;
+    display: none;
+    flex-direction: column !important;
+    gap: 10px !important;
+    z-index: 1000 !important;
+    pointer-events: none !important;
+    opacity: 0.97;
+    user-select: none;
+    -webkit-user-select: none;
+}
+.status-box {
+    background: #111111 !important;
+    border-radius: 6px !important;
+    padding: 12px 20px !important;
+    width: 220px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    pointer-events: auto !important;
+    box-sizing: border-box !important;
+}
+.health-box { border-bottom: 3px solid #c0392b !important; }
+.xp-box { border-bottom: 3px solid #ffffff !important; }
+.status-left { display: flex !important; align-items: center !important; gap: 10px !important; }
+.status-left svg { width: 18px !important; height: 18px !important; }
+.health-box .status-left svg { stroke: #e74c3c !important; fill: rgba(231, 76, 60, 0.2) !important; }
+.xp-box .status-left svg { stroke: #fff !important; fill: rgba(255, 255, 255, 0.2) !important; }
+.status-left span { color: #fff !important; font-weight: 800 !important; font-size: 13px !important; text-transform: uppercase !important; letter-spacing: 1px !important; }
+.status-value { font-weight: 900 !important; font-size: 14px !important; }
+.health-box .status-value { color: #e74c3c !important; }
+.xp-box .status-value { color: #fff !important; }
+#system-notification {
+    position: fixed;
+    top: -100px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #c0392b;
+    color: white;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-family: 'Segoe UI', sans-serif;
+    font-weight: bold;
+    font-size: 14px;
+    z-index: 100002;
+    transition: top 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    pointer-events: none;
+}
