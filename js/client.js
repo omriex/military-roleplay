@@ -1,16 +1,3 @@
-/*
-=============================================================================
-FIREBASE GOOGLE AUTHENTICATION SETUP INSTRUCTIONS:
-1. Go to your Firebase Console (console.firebase.google.com).
-2. Select your project "military-roleplay-io".
-3. On the left sidebar, click "Authentication", then go to the "Sign-in method" tab.
-4. Click "Add new provider" and select "Google".
-5. Enable it, provide a support email, and save.
-6. Scroll down to "Authorized domains" on the same page and ensure your 
-   domain (e.g., localhost, your website URL) is listed. Add it if it's missing.
-7. Ensure "Anonymous" provider is also enabled for guest logins.
-=============================================================================
-*/
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
 import { getDatabase, ref, set, onValue, onDisconnect } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
