@@ -1,3 +1,16 @@
+/*
+=============================================================================
+FIREBASE GOOGLE AUTHENTICATION SETUP INSTRUCTIONS:
+1. Go to your Firebase Console (console.firebase.google.com).
+2. Select your project "military-roleplay-io".
+3. On the left sidebar, click "Authentication", then go to the "Sign-in method" tab.
+4. Click "Add new provider" and select "Google".
+5. Enable it, provide a support email, and save.
+6. Scroll down to "Authorized domains" on the same page and ensure your 
+   domain (e.g., localhost, your website URL) is listed. Add it if it's missing.
+7. Ensure "Anonymous" provider is also enabled for guest logins.
+=============================================================================
+*/
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
 import { getDatabase, ref, set, onValue, onDisconnect } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
@@ -44,7 +57,8 @@ function syncPlayer() {
         y: player.y,
         angle: player.angle,
         scale: player.scale,
-        chats: player.chats
+        chats: player.chats,
+        lastSeen: Date.now()
     });
 }
 
@@ -126,7 +140,6 @@ function updateLeaderboard() {
     for (const p of sortedPlayers) {
         if (p && p.name) {
             let tColor = p.team === 'Military' ? '#22b534' : '#b7ffa1';
-            if (p.email === "omarshafee037@gmail.com") tColor = '#22b534';
             
             html += `<div style="display: flex; justify-content: space-between; width: 100%;">
                         <span style="color:${tColor}; text-shadow: 0px 0px 5px rgba(0,0,0,0.8); font-weight: 800;">${p.name}</span>
@@ -146,14 +159,30 @@ signInAnonymously(auth).catch((error) => {
 onAuthStateChanged(auth, (user) => {
     if (user) {
         myId = user.uid;
+        if (user.email) {
+            player.email = user.email;
+            assignRank();
+            const btn = document.getElementById('google-login-btn');
+            const txt = document.getElementById('google-login-text');
+            if (txt) txt.innerText = "LOGGED IN";
+            if (btn) btn.style.pointerEvents = "none";
+        }
+        
         onDisconnect(ref(db, `players/${myId}`)).remove();
         onValue(ref(db, 'players'), (snapshot) => {
             const data = snapshot.val() || {};
+            const now = Date.now();
             
             for (let id in data) {
                 if (id === myId) continue;
 
                 let remote = data[id];
+                
+                if (now - (remote.lastSeen || 0) > 15000) {
+                    delete allPlayers[id];
+                    continue;
+                }
+                
                 if (!allPlayers[id]) {
                     allPlayers[id] = {
                         ...remote,
@@ -644,6 +673,12 @@ function fixUI() {
             showNotification("Login failed: " + error.message);
         });
     };
+    
+    if (player.email) {
+        document.getElementById('google-login-text').innerText = "LOGGED IN";
+        googleBtn.style.pointerEvents = "none";
+    }
+
     document.body.appendChild(googleBtn);
 
     const leftSidebar = document.createElement('div');
@@ -867,8 +902,8 @@ function resolvePlayerCollisions(dt) {
             cx += nx * overlap * 0.5;
             cy += ny * overlap * 0.5;
             
-            player.vx += nx * 100 * dt;
-            player.vy += ny * 100 * dt;
+            player.vx += nx * 125 * dt;
+            player.vy += ny * 125 * dt;
         }
     }
     player.x = cx - (player.width / 2);
@@ -995,8 +1030,8 @@ function update(dt) {
 setInterval(() => {
     if (myId && document.getElementById('play-menu').style.display === 'none') {
         const now = Date.now();
-        if (now >= player.nextMoneyRewardTime) {
-            player.nextMoneyRewardTime = now + (Math.random() * 15000 + 15000);
+        while (now >= player.nextMoneyRewardTime) {
+            player.nextMoneyRewardTime += (Math.random() * 15000 + 15000);
             player.money += Math.floor(Math.random() * 26) + 25;
             updateLeaderboard();
         }
@@ -1077,14 +1112,6 @@ function render() {
             const drawName = p.name;
             let tColor = drawTeam === 'Military' ? '#22b534' : '#b7ffa1';
 
-            if (p.email === "omarshafee037@gmail.com") {
-                tColor = '#22b534';
-                if (drawTeam === "Civilians") {
-                    drawTeam = drawRank;
-                    drawRank = "";
-                }
-            }
-
             const pRenderX = p.x - camera.x + ((p.width || 45) / 2);
             const pRenderY = p.y - camera.y + ((p.height || 45) / 2);
             const pScaledH = (p.height || 45) * (p.scale || 1);
@@ -1094,29 +1121,41 @@ function render() {
             ctx.lineWidth = 3;
             ctx.strokeStyle = "rgba(0, 0, 0, 0.85)";
 
-            let currentY = pRenderY - (pScaledH / 2) - 8;
-            
+            let teamY = pRenderY - (pScaledH / 2) - 8;
+            let rankY = teamY - 16;
+            let nameY = rankY - 16;
+
             if (drawTeam) {
                 ctx.font = "bold 12px 'Segoe UI'";
                 ctx.fillStyle = tColor; 
-                ctx.strokeText(drawTeam, pRenderX, currentY);
-                ctx.fillText(drawTeam, pRenderX, currentY);
-                currentY -= 16;
+                ctx.strokeText(drawTeam, pRenderX, teamY);
+                ctx.fillText(drawTeam, pRenderX, teamY);
             }
 
             if (drawRank) {
                 ctx.font = "bold 12px 'Segoe UI'";
                 ctx.fillStyle = "rgba(235, 235, 235, 0.9)";
-                ctx.strokeText(drawRank, pRenderX, currentY);
-                ctx.fillText(drawRank, pRenderX, currentY);
-                currentY -= 16;
+                ctx.strokeText(drawRank, pRenderX, rankY);
+                ctx.fillText(drawRank, pRenderX, rankY);
             }
 
             ctx.font = "bold 13px 'Segoe UI'";
             ctx.fillStyle = tColor;
-            ctx.strokeText(drawName, pRenderX, currentY);
-            ctx.fillText(drawName, pRenderX, currentY);
+            ctx.strokeText(drawName, pRenderX, nameY);
+            ctx.fillText(drawName, pRenderX, nameY);
+        }
+
+        for (let id in allPlayers) {
+            const p = (id === myId) ? player : allPlayers[id];
             
+            if (!p.name && id !== myId) continue;
+            if (id === myId && isPlayMenuVisible) continue;
+            
+            const pRenderX = p.x - camera.x + ((p.width || 45) / 2);
+            const pRenderY = p.y - camera.y + ((p.height || 45) / 2);
+            const pScaledH = (p.height || 45) * (p.scale || 1);
+            let nameY = pRenderY - (pScaledH / 2) - 40; 
+
             if (p.activeChats && p.activeChats.length > 0) {
                 let currentYOffset = 0;
                 for (let i = p.activeChats.length - 1; i >= 0; i--) {
@@ -1155,7 +1194,7 @@ function render() {
                     bubbleWidth += 20;
 
                     const bubbleX = pRenderX - (bubbleWidth / 2);
-                    const bubbleY = currentY - 10 - currentYOffset - bubbleHeight + slideOffsetY; 
+                    const bubbleY = nameY - 10 - currentYOffset - bubbleHeight + slideOffsetY; 
                     
                     ctx.fillStyle = "rgba(10, 10, 10, 0.92)";
                     ctx.strokeStyle = "rgba(255, 255, 255, 0.15)";
