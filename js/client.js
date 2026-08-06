@@ -1,6 +1,7 @@
+
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
 import { getDatabase, ref, set, onValue, onDisconnect } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
-import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+import { getAuth, signInAnonymously, onAuthStateChanged, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyBxu2JIxVLsCTi91rfEt3X58Q3d2uaocAw",
@@ -12,20 +13,32 @@ const firebaseConfig = {
     appId: "1:823014317267:web:da61c79a248423ff5f4826"
 };
 
-
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 const auth = getAuth(app);
+const googleProvider = new GoogleAuthProvider();
 
 let myId = null;
 let allPlayers = {};
 let lastSyncTime = 0;
+
+const militaryRanks = [
+    "• [E1] Private PVT •", "• [E2] Private First Class PFC •", "• [E3] Corporal CPL •",
+    "• [E4] Lance Corporal LCPL •", "• [E5] Sergeant SGT •", "• [E6] Staff Sergeant SSGT •",
+    "• [E7] Sergeant First Class SFC •", "• [E8] Master Sergeant MSGT •", "• [E9] Doesn't Exist •",
+    "• [E10] First Sergeant FSGT •", "• [E11] Sergeant Major SGTM •", "• [E12] Command Sergeant Major CSM •",
+    "• [O1] Second Lieutenant SLT •", "• [O2] First Lieutenant FLT •", "• [O3] Captain CPT •",
+    "• [O4] Major MJR •", "• [O5] Lieutenant Colonel LTCOL •", "• [O6] Colonel COL •",
+    "• [O7] Brigadier General BGEN •", "• [O8] Major General MGEN •", "• [O9] Lieutenant General LTGEN •",
+    "• [O10] General GEN •"
+];
 
 function syncPlayer() {
     if (!myId) return;
     set(ref(db, `players/${myId}`), {
         name: player.name,
         team: player.team,
+        rank: player.rank,
         money: player.money,
         x: player.x,
         y: player.y,
@@ -33,6 +46,18 @@ function syncPlayer() {
         scale: player.scale,
         chats: player.chats
     });
+}
+
+function assignRank() {
+    if (player.team === "Military") {
+        if (player.email === "omarshafee037@gmail.com") {
+            player.rank = "• [O10] General GEN •";
+        } else {
+            player.rank = militaryRanks[0];
+        }
+    } else {
+        player.rank = "• Civilian •";
+    }
 }
 
 function spawnPlayer(regionName) {
@@ -50,6 +75,7 @@ function spawnPlayer(regionName) {
     player.vy = 0;
     player.targetX = player.x;
     player.targetY = player.y;
+    assignRank();
 }
 
 function getLines(ctx, text, maxWidth) {
@@ -97,13 +123,13 @@ function updateLeaderboard() {
     if (!scoreboardList) return;
 
     let html = '';
-    
     const sortedPlayers = Object.values(allPlayers).sort((a, b) => (b.money || 0) - (a.money || 0));
 
     for (const p of sortedPlayers) {
         if (p && p.name) {
+            const tColor = p.team === 'Military' ? '#22b534' : '#b7ffa1';
             html += `<div style="display: flex; justify-content: space-between; width: 100%;">
-                        <span>${p.name}</span>
+                        <span style="color:${tColor}; text-shadow: 0px 0px 5px rgba(0,0,0,0.8);">${p.name}</span>
                         <span style="color:#2ecc71;">$${p.money || 0}</span>
                      </div>`;
         }
@@ -151,6 +177,7 @@ onAuthStateChanged(auth, (user) => {
                     p.scale = remote.scale;
                     p.name = remote.name;
                     p.team = remote.team || "Civilians";
+                    p.rank = remote.rank || "• Civilian •";
                     p.money = remote.money || 0;
                     
                     if (remote.chats) {
@@ -212,7 +239,9 @@ let mouseX = 0, mouseY = 0;
 
 let player = {
     name: "",
+    email: "",
     team: "Civilians",
+    rank: "• Civilian •",
     money: 0,
     moneyTimer: 0,
     nextMoneyReward: 15,
@@ -256,7 +285,9 @@ window.addEventListener('resize', resizeCanvas);
 
 window.addEventListener('keydown', e => { 
     if (e.key === 'Enter') {
-        if (document.getElementById('play-menu').style.display !== 'none') return; 
+        const playMenu = document.getElementById('play-menu');
+        if (playMenu && playMenu.style.display !== 'none') return; 
+
         const chatContainer = document.getElementById('chat-input-container');
         const chatInput = document.getElementById('chat-input');
         if (chatContainer.style.display !== 'block') {
@@ -427,6 +458,7 @@ function bindUI() {
         let name = nameInput.value.trim();
         if (!nameInput.disabled) {
             player.name = name ? name : "user" + Math.floor(Math.random() * 1001);
+            assignRank();
         }
         document.getElementById('play-menu').style.display = 'none';
         document.getElementById('game-ui-layer').style.display = 'block';
@@ -445,6 +477,7 @@ function bindUI() {
         
         if (myId) {
             allPlayers[myId] = player;
+            syncPlayer();
         }
         updateLeaderboard(); 
     });
@@ -553,6 +586,55 @@ function fixUI() {
         };
         navContainer.insertBefore(homeBtn, shopNavBtn);
     }
+
+    const playMenu = document.getElementById('play-menu');
+    if (playMenu) {
+        const googleBtn = document.createElement('button');
+        googleBtn.id = "google-login-btn";
+        googleBtn.innerHTML = `
+            <svg viewBox="0 0 48 48" width="16" height="16"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.73 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+            <span id="google-login-text">Sign in with Google</span>
+        `;
+        googleBtn.style.cssText = `
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(20, 20, 20, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 10px 15px;
+            color: white;
+            font-family: 'Segoe UI', sans-serif;
+            font-weight: 800;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            transition: all 0.2s ease;
+            z-index: 10000;
+        `;
+        googleBtn.onmouseover = () => { googleBtn.style.background = "rgba(40, 40, 40, 0.95)"; googleBtn.style.transform = "scale(1.05)"; };
+        googleBtn.onmouseout = () => { googleBtn.style.background = "rgba(20, 20, 20, 0.95)"; googleBtn.style.transform = "scale(1)"; };
+        googleBtn.onmousedown = () => { googleBtn.style.transform = "scale(0.95)"; };
+        googleBtn.onclick = () => {
+            signInWithPopup(auth, googleProvider).then((result) => {
+                const user = result.user;
+                player.email = user.email;
+                document.getElementById('google-login-text').innerText = "Logged In";
+                googleBtn.style.pointerEvents = "none";
+                assignRank();
+                syncPlayer();
+            }).catch(error => {
+                showNotification("Login failed: " + error.message);
+            });
+        };
+        playMenu.appendChild(googleBtn);
+    }
+
     const leftSidebar = document.createElement('div');
     leftSidebar.style.cssText = "position: fixed !important; left: 20px !important; top: 50% !important; transform: translateY(-50%) !important; display: flex !important; flex-direction: column !important; gap: 12px !important; z-index: 9999 !important; pointer-events: none !important;";
     if (uiLayer) uiLayer.appendChild(leftSidebar);
@@ -746,6 +828,38 @@ function preRenderMap() {
     }
 }
 
+function resolvePlayerCollisions() {
+    const currentScale = keys['c'] ? 0.92 : 1;
+    const radius = (player.width * currentScale) / 2;
+    let cx = player.x + (player.width / 2);
+    let cy = player.y + (player.height / 2);
+
+    for (let id in allPlayers) {
+        if (id === myId) continue;
+        const p2 = allPlayers[id];
+        if (p2.x === undefined || p2.y === undefined) continue;
+
+        const p2Radius = (p2.width || 45) * (p2.scale || 1) / 2;
+        let p2cx = p2.x + ((p2.width || 45) / 2);
+        let p2cy = p2.y + ((p2.height || 45) / 2);
+
+        let dx = cx - p2cx;
+        let dy = cy - p2cy;
+        let dist = Math.sqrt(dx * dx + dy * dy);
+        let minDist = radius + p2Radius;
+
+        if (dist > 0 && dist < minDist) {
+            let overlap = minDist - dist;
+            let nx = dx / dist;
+            let ny = dy / dist;
+            cx += nx * overlap;
+            cy += ny * overlap;
+        }
+    }
+    player.x = cx - (player.width / 2);
+    player.y = cy - (player.height / 2);
+}
+
 function resolveCircleCollisions() {
     const currentScale = keys['c'] ? 0.92 : 1;
     const radius = (player.width * currentScale) / 2;
@@ -830,6 +944,7 @@ function update(dt) {
     
     for (let i = 0; i < 3; i++) {
         resolveCircleCollisions();
+        resolvePlayerCollisions();
     }
     
     if (player.x < 0) player.x = 0;
@@ -851,8 +966,8 @@ function update(dt) {
         player.moneyTimer += dt;
         if (player.moneyTimer >= player.nextMoneyReward) {
             player.moneyTimer = 0;
-            player.nextMoneyReward = Math.random() * 15 + 15;
-            player.money += Math.floor(Math.random() * 26) + 25;
+            player.nextMoneyReward = Math.random() * 15 + 15; 
+            player.money += Math.floor(Math.random() * 26) + 25; 
             updateLeaderboard(); 
             syncPlayer();
         }
@@ -898,35 +1013,64 @@ function render() {
         }
     }
 
-    if (!allPlayers[myId]) {
-        allPlayers[myId] = player;
+    const playMenu = document.getElementById('play-menu');
+    const playBtn = document.getElementById('play-btn');
+    const isPlayMenuVisible = playMenu && playMenu.style.display !== 'none';
+    const isInitialLoad = isPlayMenuVisible && playBtn && playBtn.innerText.toUpperCase().includes('PLAY');
+
+    if (!isInitialLoad) {
+        if (!allPlayers[myId] && !isPlayMenuVisible) {
+            allPlayers[myId] = player;
+        }
+
+        for (let id in allPlayers) {
+            const p = (id === myId) ? player : allPlayers[id];
+            
+            if (!p.name && id !== myId) continue;
+            if (id === myId && isPlayMenuVisible) continue;
+            
+            const drawX = p.x;
+            const drawY = p.y;
+            const drawAngle = p.angle;
+            const drawScale = p.scale;
+
+            const pRenderX = drawX - camera.x + ((p.width || 45) / 2);
+            const pRenderY = drawY - camera.y + ((p.height || 45) / 2);
+            const pScaledW = (p.width || 45) * drawScale;
+            const pScaledH = (p.height || 45) * drawScale;
+
+            ctx.save();
+            ctx.translate(pRenderX, pRenderY);
+            ctx.rotate(drawAngle);
+            ctx.drawImage(playerImg, -pScaledW / 2, -pScaledH / 2, pScaledW, pScaledH);
+            ctx.restore();
+        }
     }
 
-    for (let id in allPlayers) {
-        const p = (id === myId) ? player : allPlayers[id];
-        
-        if (!p.name && id !== myId) continue;
-        
-        const drawX = p.x;
-        const drawY = p.y;
-        const drawAngle = p.angle;
-        const drawScale = p.scale;
-        const drawName = p.name;
-        const drawTeam = p.team || "Civilians";
-        const tColor = drawTeam === 'Military' ? '#22b534' : '#b7ffa1';
+    for (let cy = startCY; cy <= endCY; cy++) {
+        for (let cx = startCX; cx <= endCX; cx++) {
+            const destX = Math.floor(cx * CHUNK_SIZE - camera.x);
+            const destY = Math.floor(cy * CHUNK_SIZE - camera.y);
+            ctx.drawImage(fgChunks[cy][cx], destX, destY);
+        }
+    }
 
-        const pRenderX = drawX - camera.x + (player.width / 2);
-        const pRenderY = drawY - camera.y + (player.height / 2);
-        const pScaledW = player.width * drawScale;
-        const pScaledH = player.height * drawScale;
+    if (!isInitialLoad) {
+        for (let id in allPlayers) {
+            const p = (id === myId) ? player : allPlayers[id];
+            
+            if (!p.name && id !== myId) continue;
+            if (id === myId && isPlayMenuVisible) continue;
 
-        ctx.save();
-        ctx.translate(pRenderX, pRenderY);
-        ctx.rotate(drawAngle);
-        ctx.drawImage(playerImg, -pScaledW / 2, -pScaledH / 2, pScaledW, pScaledH);
-        ctx.restore();
+            const drawTeam = p.team || "Civilians";
+            const drawRank = p.rank || "• Civilian •";
+            const drawName = p.name;
+            const tColor = drawTeam === 'Military' ? '#22b534' : '#b7ffa1';
 
-        if (drawName && document.getElementById('play-menu').style.display === 'none') {
+            const pRenderX = p.x - camera.x + ((p.width || 45) / 2);
+            const pRenderY = p.y - camera.y + ((p.height || 45) / 2);
+            const pScaledH = (p.height || 45) * (p.scale || 1);
+
             ctx.textAlign = "center";
             ctx.lineJoin = "round";
             ctx.lineWidth = 3;
@@ -941,19 +1085,26 @@ function render() {
             let rankY = divisionY - 16;
             ctx.font = "bold 12px 'Segoe UI'";
             ctx.fillStyle = "rgba(235, 235, 235, 0.9)";
-            if (drawTeam === "Military") {
-                ctx.strokeText("• [E1] Private •", pRenderX, rankY);
-                ctx.fillText("• [E1] Private •", pRenderX, rankY);
-            } else {
-                ctx.strokeText("• Civilian •", pRenderX, rankY);
-                ctx.fillText("• Civilian •", pRenderX, rankY);
-            }
+            ctx.strokeText(drawRank, pRenderX, rankY);
+            ctx.fillText(drawRank, pRenderX, rankY);
             
             let nameY = rankY - 16;
             ctx.font = "bold 13px 'Segoe UI'";
             ctx.fillStyle = tColor;
             ctx.strokeText(drawName, pRenderX, nameY);
             ctx.fillText(drawName, pRenderX, nameY);
+        }
+
+        for (let id in allPlayers) {
+            const p = (id === myId) ? player : allPlayers[id];
+            
+            if (!p.name && id !== myId) continue;
+            if (id === myId && isPlayMenuVisible) continue;
+            
+            const pRenderX = p.x - camera.x + ((p.width || 45) / 2);
+            const pRenderY = p.y - camera.y + ((p.height || 45) / 2);
+            const pScaledH = (p.height || 45) * (p.scale || 1);
+            let nameY = pRenderY - (pScaledH / 2) - 8 - 16 - 16; 
 
             if (p.activeChats && p.activeChats.length > 0) {
                 let currentYOffset = 0;
@@ -993,7 +1144,7 @@ function render() {
                     bubbleWidth += 20;
 
                     const bubbleX = pRenderX - (bubbleWidth / 2);
-                    const bubbleY = nameY - 35 - currentYOffset - bubbleHeight + slideOffsetY; 
+                    const bubbleY = nameY - 10 - currentYOffset - bubbleHeight + slideOffsetY; 
                     
                     ctx.fillStyle = "rgba(10, 10, 10, 0.92)";
                     ctx.strokeStyle = "rgba(255, 255, 255, 0.15)";
@@ -1013,14 +1164,6 @@ function render() {
                     currentYOffset += bubbleHeight + 5;
                 }
             }
-        }
-    }
-
-    for (let cy = startCY; cy <= endCY; cy++) {
-        for (let cx = startCX; cx <= endCX; cx++) {
-            const destX = Math.floor(cx * CHUNK_SIZE - camera.x);
-            const destY = Math.floor(cy * CHUNK_SIZE - camera.y);
-            ctx.drawImage(fgChunks[cy][cx], destX, destY);
         }
     }
 
