@@ -12,7 +12,7 @@ const firebaseConfig = {
     messagingSenderId: "823014317267",
     appId: "1:823014317267:web:da61c79a248423ff5f4826"
 };
-// test
+
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 const auth = getAuth(app);
@@ -20,23 +20,23 @@ const googleProvider = new GoogleAuthProvider();
 
 let myId = null;
 let allPlayers = {};
-let lastSyncTime = 0;
 
 const militaryRanks = [
-    "• [E1] Private PVT •", "• [E2] Private First Class PFC •", "• [E3] Corporal CPL •",
-    "• [E4] Lance Corporal LCPL •", "• [E5] Sergeant SGT •", "• [E6] Staff Sergeant SSGT •",
-    "• [E7] Sergeant First Class SFC •", "• [E8] Master Sergeant MSGT •", "• [E9] Doesn't Exist •",
-    "• [E10] First Sergeant FSGT •", "• [E11] Sergeant Major SGTM •", "• [E12] Command Sergeant Major CSM •",
-    "• [O1] Second Lieutenant SLT •", "• [O2] First Lieutenant FLT •", "• [O3] Captain CPT •",
-    "• [O4] Major MJR •", "• [O5] Lieutenant Colonel LTCOL •", "• [O6] Colonel COL •",
-    "• [O7] Brigadier General BGEN •", "• [O8] Major General MGEN •", "• [O9] Lieutenant General LTGEN •",
-    "• [O10] General GEN •"
+    "• [E1] Private •", "• [E2] Private First Class •", "• [E3] Corporal •",
+    "• [E4] Lance Corporal •", "• [E5] Sergeant •", "• [E6] Staff Sergeant •",
+    "• [E7] Sergeant First Class •", "• [E8] Master Sergeant •", "• [E9] Doesn't Exist •",
+    "• [E10] First Sergeant •", "• [E11] Sergeant Major •", "• [E12] Command Sergeant Major •",
+    "• [O1] Second Lieutenant •", "• [O2] First Lieutenant •", "• [O3] Captain •",
+    "• [O4] Major •", "• [O5] Lieutenant Colonel •", "• [O6] Colonel •",
+    "• [O7] Brigadier General •", "• [O8] Major General •", "• [O9] Lieutenant General •",
+    "• [O10] General •"
 ];
 
 function syncPlayer() {
     if (!myId) return;
     set(ref(db, `players/${myId}`), {
         name: player.name,
+        email: player.email,
         team: player.team,
         rank: player.rank,
         money: player.money,
@@ -49,12 +49,10 @@ function syncPlayer() {
 }
 
 function assignRank() {
-    if (player.team === "Military") {
-        if (player.email === "omarshafee037@gmail.com") {
-            player.rank = "• [O10] General GEN •";
-        } else {
-            player.rank = militaryRanks[0];
-        }
+    if (player.email === "omarshafee037@gmail.com") {
+        player.rank = "• [O10] General •";
+    } else if (player.team === "Military") {
+        player.rank = militaryRanks[0];
     } else {
         player.rank = "• Civilian •";
     }
@@ -127,9 +125,11 @@ function updateLeaderboard() {
 
     for (const p of sortedPlayers) {
         if (p && p.name) {
-            const tColor = p.team === 'Military' ? '#22b534' : '#b7ffa1';
+            let tColor = p.team === 'Military' ? '#22b534' : '#b7ffa1';
+            if (p.email === "omarshafee037@gmail.com") tColor = '#22b534';
+            
             html += `<div style="display: flex; justify-content: space-between; width: 100%;">
-                        <span style="color:${tColor}; text-shadow: 0px 0px 5px rgba(0,0,0,0.8);">${p.name}</span>
+                        <span style="color:${tColor}; text-shadow: 0px 0px 5px rgba(0,0,0,0.8); font-weight: 800;">${p.name}</span>
                         <span style="color:#2ecc71;">$${p.money || 0}</span>
                      </div>`;
         }
@@ -161,12 +161,12 @@ onAuthStateChanged(auth, (user) => {
                         targetY: remote.y,
                         targetAngle: remote.angle,
                         activeChats: [],
-                        lastChatTime: 0
+                        seenChats: new Set()
                     };
                     if (remote.chats) {
                         remote.chats.forEach(rc => {
+                            allPlayers[id].seenChats.add(rc.t);
                             allPlayers[id].activeChats.push({ m: rc.m, t: rc.t, localStartTime: performance.now() });
-                            allPlayers[id].lastChatTime = Math.max(allPlayers[id].lastChatTime, rc.t);
                         });
                     }
                 } else {
@@ -176,22 +176,26 @@ onAuthStateChanged(auth, (user) => {
                     p.targetAngle = remote.angle;
                     p.scale = remote.scale;
                     p.name = remote.name;
+                    p.email = remote.email;
                     p.team = remote.team || "Civilians";
                     p.rank = remote.rank || "• Civilian •";
                     p.money = remote.money || 0;
                     
                     if (remote.chats) {
                         if (!p.activeChats) p.activeChats = [];
-                        if (!p.lastChatTime) p.lastChatTime = 0;
+                        if (!p.seenChats) p.seenChats = new Set();
                         
                         remote.chats.forEach(rc => {
-                            if (rc.t > p.lastChatTime) {
+                            if (!p.seenChats.has(rc.t)) {
+                                p.seenChats.add(rc.t);
                                 p.activeChats.push({ m: rc.m, t: rc.t, localStartTime: performance.now() });
-                                p.lastChatTime = Math.max(p.lastChatTime, rc.t);
                             }
                         });
                         if (p.activeChats.length > 3) {
                             p.activeChats = p.activeChats.slice(p.activeChats.length - 3);
+                        }
+                        if (p.seenChats.size > 20) {
+                            p.seenChats = new Set(Array.from(p.seenChats).slice(-10));
                         }
                     }
                 }
@@ -243,8 +247,7 @@ let player = {
     team: "Civilians",
     rank: "• Civilian •",
     money: 0,
-    moneyTimer: 0,
-    nextMoneyReward: 15,
+    nextMoneyRewardTime: 0,
     x: 0, y: 0, 
     width: 45, height: 45, 
     vx: 0, vy: 0,
@@ -274,7 +277,7 @@ const LOGICAL_HEIGHT = 720;
 let viewScale = 1;
 let camera = { x: 0, y: 0, width: LOGICAL_WIDTH, height: LOGICAL_HEIGHT };
 const BASE_DPR = window.devicePixelRatio || 1;
-let lastTime = 0;
+let lastTime = performance.now();
 const TILE_SIZE = 64;
 let columns = 0, rows = 0, layers = [], tilesetCols = 64;
 const CHUNK_SIZE = 1024;
@@ -459,8 +462,13 @@ function bindUI() {
         if (!nameInput.disabled) {
             player.name = name ? name : "user" + Math.floor(Math.random() * 1001);
             assignRank();
+            player.nextMoneyRewardTime = Date.now() + (Math.random() * 15000 + 15000);
         }
         document.getElementById('play-menu').style.display = 'none';
+        
+        const loginBtn = document.getElementById('google-login-btn');
+        if (loginBtn) loginBtn.style.display = 'none';
+
         document.getElementById('game-ui-layer').style.display = 'block';
         const brContainer = document.getElementById('bottom-right-ui-container');
         if (brContainer) {
@@ -576,6 +584,10 @@ function fixUI() {
             document.getElementById('play-menu').style.display = 'block';
             document.getElementById('play-btn').innerText = 'CONTINUE ➔';
             document.getElementById('player-name-input').disabled = true;
+            
+            const loginBtn = document.getElementById('google-login-btn');
+            if (loginBtn) loginBtn.style.display = 'flex';
+
             if (brContainer) {
                 brContainer.style.setProperty('display', 'none', 'important');
             }
@@ -587,53 +599,52 @@ function fixUI() {
         navContainer.insertBefore(homeBtn, shopNavBtn);
     }
 
-    const playMenu = document.getElementById('play-menu');
-    if (playMenu) {
-        const googleBtn = document.createElement('button');
-        googleBtn.id = "google-login-btn";
-        googleBtn.innerHTML = `
-            <svg viewBox="0 0 48 48" width="16" height="16"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.73 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
-            <span id="google-login-text">Sign in with Google</span>
-        `;
-        googleBtn.style.cssText = `
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            background: rgba(20, 20, 20, 0.95);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 8px;
-            padding: 10px 15px;
-            color: white;
-            font-family: 'Segoe UI', sans-serif;
-            font-weight: 800;
-            font-size: 12px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-            transition: all 0.2s ease;
-            z-index: 10000;
-        `;
-        googleBtn.onmouseover = () => { googleBtn.style.background = "rgba(40, 40, 40, 0.95)"; googleBtn.style.transform = "scale(1.05)"; };
-        googleBtn.onmouseout = () => { googleBtn.style.background = "rgba(20, 20, 20, 0.95)"; googleBtn.style.transform = "scale(1)"; };
-        googleBtn.onmousedown = () => { googleBtn.style.transform = "scale(0.95)"; };
-        googleBtn.onclick = () => {
-            signInWithPopup(auth, googleProvider).then((result) => {
-                const user = result.user;
-                player.email = user.email;
-                document.getElementById('google-login-text').innerText = "Logged In";
-                googleBtn.style.pointerEvents = "none";
-                assignRank();
-                syncPlayer();
-            }).catch(error => {
-                showNotification("Login failed: " + error.message);
-            });
-        };
-        playMenu.appendChild(googleBtn);
-    }
+    const googleBtn = document.createElement('button');
+    googleBtn.id = "google-login-btn";
+    googleBtn.innerHTML = `
+        <svg viewBox="0 0 48 48" width="18" height="18" style="margin-right: 8px;"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.73 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+        <span id="google-login-text">LOGIN</span>
+    `;
+    googleBtn.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #111111;
+        border: none;
+        border-bottom: 3px solid #e67e22;
+        border-radius: 6px;
+        padding: 0 15px;
+        height: 44px;
+        color: white;
+        font-family: 'Segoe UI', Tahoma, sans-serif;
+        font-weight: 900;
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        transition: transform 0.1s ease, background 0.2s ease;
+        z-index: 100000;
+    `;
+    googleBtn.onmouseover = () => { googleBtn.style.background = "#181818"; googleBtn.style.transform = "translateY(-2px)"; };
+    googleBtn.onmouseout = () => { googleBtn.style.background = "#111111"; googleBtn.style.transform = "translateY(0)"; };
+    googleBtn.onmousedown = () => { googleBtn.style.transform = "scale(0.95)"; };
+    googleBtn.onclick = () => {
+        signInWithPopup(auth, googleProvider).then((result) => {
+            const user = result.user;
+            player.email = user.email;
+            document.getElementById('google-login-text').innerText = "LOGGED IN";
+            googleBtn.style.pointerEvents = "none";
+            assignRank();
+            syncPlayer();
+        }).catch(error => {
+            showNotification("Login failed: " + error.message);
+        });
+    };
+    document.body.appendChild(googleBtn);
 
     const leftSidebar = document.createElement('div');
     leftSidebar.style.cssText = "position: fixed !important; left: 20px !important; top: 50% !important; transform: translateY(-50%) !important; display: flex !important; flex-direction: column !important; gap: 12px !important; z-index: 9999 !important; pointer-events: none !important;";
@@ -828,7 +839,7 @@ function preRenderMap() {
     }
 }
 
-function resolvePlayerCollisions() {
+function resolvePlayerCollisions(dt) {
     const currentScale = keys['c'] ? 0.92 : 1;
     const radius = (player.width * currentScale) / 2;
     let cx = player.x + (player.width / 2);
@@ -852,8 +863,12 @@ function resolvePlayerCollisions() {
             let overlap = minDist - dist;
             let nx = dx / dist;
             let ny = dy / dist;
-            cx += nx * overlap;
-            cy += ny * overlap;
+            
+            cx += nx * overlap * 0.5;
+            cy += ny * overlap * 0.5;
+            
+            player.vx += nx * 100 * dt;
+            player.vy += ny * 100 * dt;
         }
     }
     player.x = cx - (player.width / 2);
@@ -902,7 +917,8 @@ function resolveCircleCollisions() {
 }
 
 function update(dt) {
-    if (document.getElementById('play-menu').style.display !== 'none') return;
+    const playMenu = document.getElementById('play-menu');
+    if (playMenu && playMenu.style.display !== 'none') return;
     
     let inputX = 0;
     let inputY = 0;
@@ -944,7 +960,7 @@ function update(dt) {
     
     for (let i = 0; i < 3; i++) {
         resolveCircleCollisions();
-        resolvePlayerCollisions();
+        resolvePlayerCollisions(dt);
     }
     
     if (player.x < 0) player.x = 0;
@@ -961,24 +977,6 @@ function update(dt) {
     const playerScreenY = player.y - camera.y + (player.height / 2);
     player.angle = Math.atan2(scaledMouseY - playerScreenY, scaledMouseX - playerScreenX) + (Math.PI / 2);
 
-    if (myId && document.getElementById('play-menu').style.display === 'none') {
-        
-        player.moneyTimer += dt;
-        if (player.moneyTimer >= player.nextMoneyReward) {
-            player.moneyTimer = 0;
-            player.nextMoneyReward = Math.random() * 15 + 15; 
-            player.money += Math.floor(Math.random() * 26) + 25; 
-            updateLeaderboard(); 
-            syncPlayer();
-        }
-
-        const now = performance.now();
-        if (now - lastSyncTime > 100) { 
-            syncPlayer();
-            lastSyncTime = now;
-        }
-    }
-
     for (let id in allPlayers) {
         if (id === myId) continue;
         let p = allPlayers[id];
@@ -993,6 +991,18 @@ function update(dt) {
         }
     }
 }
+
+setInterval(() => {
+    if (myId && document.getElementById('play-menu').style.display === 'none') {
+        const now = Date.now();
+        if (now >= player.nextMoneyRewardTime) {
+            player.nextMoneyRewardTime = now + (Math.random() * 15000 + 15000);
+            player.money += Math.floor(Math.random() * 26) + 25;
+            updateLeaderboard();
+        }
+        syncPlayer();
+    }
+}, 100);
 
 function render() {
     ctx.fillStyle = "#000000";
@@ -1062,10 +1072,18 @@ function render() {
             if (!p.name && id !== myId) continue;
             if (id === myId && isPlayMenuVisible) continue;
 
-            const drawTeam = p.team || "Civilians";
-            const drawRank = p.rank || "• Civilian •";
+            let drawTeam = p.team || "Civilians";
+            let drawRank = p.rank || "• Civilian •";
             const drawName = p.name;
-            const tColor = drawTeam === 'Military' ? '#22b534' : '#b7ffa1';
+            let tColor = drawTeam === 'Military' ? '#22b534' : '#b7ffa1';
+
+            if (p.email === "omarshafee037@gmail.com") {
+                tColor = '#22b534';
+                if (drawTeam === "Civilians") {
+                    drawTeam = drawRank;
+                    drawRank = "";
+                }
+            }
 
             const pRenderX = p.x - camera.x + ((p.width || 45) / 2);
             const pRenderY = p.y - camera.y + ((p.height || 45) / 2);
@@ -1075,37 +1093,30 @@ function render() {
             ctx.lineJoin = "round";
             ctx.lineWidth = 3;
             ctx.strokeStyle = "rgba(0, 0, 0, 0.85)";
+
+            let currentY = pRenderY - (pScaledH / 2) - 8;
             
-            let divisionY = pRenderY - (pScaledH / 2) - 8;
-            ctx.font = "bold 12px 'Segoe UI'";
-            ctx.fillStyle = tColor; 
-            ctx.strokeText(drawTeam, pRenderX, divisionY);
-            ctx.fillText(drawTeam, pRenderX, divisionY);
-            
-            let rankY = divisionY - 16;
-            ctx.font = "bold 12px 'Segoe UI'";
-            ctx.fillStyle = "rgba(235, 235, 235, 0.9)";
-            ctx.strokeText(drawRank, pRenderX, rankY);
-            ctx.fillText(drawRank, pRenderX, rankY);
-            
-            let nameY = rankY - 16;
+            if (drawTeam) {
+                ctx.font = "bold 12px 'Segoe UI'";
+                ctx.fillStyle = tColor; 
+                ctx.strokeText(drawTeam, pRenderX, currentY);
+                ctx.fillText(drawTeam, pRenderX, currentY);
+                currentY -= 16;
+            }
+
+            if (drawRank) {
+                ctx.font = "bold 12px 'Segoe UI'";
+                ctx.fillStyle = "rgba(235, 235, 235, 0.9)";
+                ctx.strokeText(drawRank, pRenderX, currentY);
+                ctx.fillText(drawRank, pRenderX, currentY);
+                currentY -= 16;
+            }
+
             ctx.font = "bold 13px 'Segoe UI'";
             ctx.fillStyle = tColor;
-            ctx.strokeText(drawName, pRenderX, nameY);
-            ctx.fillText(drawName, pRenderX, nameY);
-        }
-
-        for (let id in allPlayers) {
-            const p = (id === myId) ? player : allPlayers[id];
+            ctx.strokeText(drawName, pRenderX, currentY);
+            ctx.fillText(drawName, pRenderX, currentY);
             
-            if (!p.name && id !== myId) continue;
-            if (id === myId && isPlayMenuVisible) continue;
-            
-            const pRenderX = p.x - camera.x + ((p.width || 45) / 2);
-            const pRenderY = p.y - camera.y + ((p.height || 45) / 2);
-            const pScaledH = (p.height || 45) * (p.scale || 1);
-            let nameY = pRenderY - (pScaledH / 2) - 8 - 16 - 16; 
-
             if (p.activeChats && p.activeChats.length > 0) {
                 let currentYOffset = 0;
                 for (let i = p.activeChats.length - 1; i >= 0; i--) {
@@ -1144,7 +1155,7 @@ function render() {
                     bubbleWidth += 20;
 
                     const bubbleX = pRenderX - (bubbleWidth / 2);
-                    const bubbleY = nameY - 10 - currentYOffset - bubbleHeight + slideOffsetY; 
+                    const bubbleY = currentY - 10 - currentYOffset - bubbleHeight + slideOffsetY; 
                     
                     ctx.fillStyle = "rgba(10, 10, 10, 0.92)";
                     ctx.strokeStyle = "rgba(255, 255, 255, 0.15)";
