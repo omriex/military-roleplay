@@ -11,6 +11,7 @@ const firebaseConfig = {
     messagingSenderId: "823014317267",
     appId: "1:823014317267:web:da61c79a248423ff5f4826"
 };
+
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 const auth = getAuth(app);
@@ -18,6 +19,20 @@ const auth = getAuth(app);
 let myId = null;
 let allPlayers = {};
 let lastSyncTime = 0;
+
+function syncPlayer() {
+    if (!myId) return;
+    set(ref(db, `players/${myId}`), {
+        name: player.name,
+        team: player.team,
+        money: player.money,
+        x: player.x,
+        y: player.y,
+        angle: player.angle,
+        scale: player.scale,
+        chats: player.chats
+    });
+}
 
 function spawnPlayer(regionName) {
     if (typeof GAME_JSON === 'undefined') return;
@@ -54,7 +69,25 @@ function getLines(ctx, text, maxWidth) {
     if (currentLine) {
         lines.push(currentLine);
     }
-    return lines;
+    
+    const finalLines = [];
+    for (let line of lines) {
+        if (ctx.measureText(line).width > maxWidth) {
+            let temp = "";
+            for (let char of line) {
+                if (ctx.measureText(temp + char).width > maxWidth) {
+                    finalLines.push(temp);
+                    temp = char;
+                } else {
+                    temp += char;
+                }
+            }
+            if (temp) finalLines.push(temp);
+        } else {
+            finalLines.push(line);
+        }
+    }
+    return finalLines;
 }
 
 function updateLeaderboard() {
@@ -63,21 +96,20 @@ function updateLeaderboard() {
     if (!scoreboardList) return;
 
     let html = '';
-    let count = 0;
     
-    for (let id in allPlayers) {
-        const p = allPlayers[id];
+    const sortedPlayers = Object.values(allPlayers).sort((a, b) => (b.money || 0) - (a.money || 0));
+
+    for (const p of sortedPlayers) {
         if (p && p.name) {
             html += `<div style="display: flex; justify-content: space-between; width: 100%;">
                         <span>${p.name}</span>
-                        <span style="color:#2ecc71;">$0</span>
+                        <span style="color:#2ecc71;">$${p.money || 0}</span>
                      </div>`;
-            count++;
         }
     }
     
     scoreboardList.innerHTML = html;
-    if (playerAttr) playerAttr.innerText = count.toString();
+    if (playerAttr) playerAttr.innerText = (player.money || 0).toString();
 }
 
 signInAnonymously(auth).catch((error) => {
@@ -101,11 +133,13 @@ onAuthStateChanged(auth, (user) => {
                         targetX: remote.x,
                         targetY: remote.y,
                         targetAngle: remote.angle,
-                        activeChats: []
+                        activeChats: [],
+                        lastChatTime: 0
                     };
                     if (remote.chats) {
                         remote.chats.forEach(rc => {
                             allPlayers[id].activeChats.push({ m: rc.m, t: rc.t, localStartTime: performance.now() });
+                            allPlayers[id].lastChatTime = Math.max(allPlayers[id].lastChatTime, rc.t);
                         });
                     }
                 } else {
@@ -116,12 +150,16 @@ onAuthStateChanged(auth, (user) => {
                     p.scale = remote.scale;
                     p.name = remote.name;
                     p.team = remote.team || "Civilians";
+                    p.money = remote.money || 0;
                     
                     if (remote.chats) {
                         if (!p.activeChats) p.activeChats = [];
+                        if (!p.lastChatTime) p.lastChatTime = 0;
+                        
                         remote.chats.forEach(rc => {
-                            if (!p.activeChats.find(ac => ac.t === rc.t)) {
+                            if (rc.t > p.lastChatTime) {
                                 p.activeChats.push({ m: rc.m, t: rc.t, localStartTime: performance.now() });
+                                p.lastChatTime = Math.max(p.lastChatTime, rc.t);
                             }
                         });
                         if (p.activeChats.length > 3) {
@@ -174,6 +212,9 @@ let mouseX = 0, mouseY = 0;
 let player = {
     name: "",
     team: "Civilians",
+    money: 0,
+    moneyTimer: 0,
+    nextMoneyReward: 15,
     x: 0, y: 0, 
     width: 45, height: 45, 
     vx: 0, vy: 0,
@@ -231,24 +272,15 @@ window.addEventListener('keydown', e => {
                 } else {
                     if (msg.length >= 100) chatCooldownTimer = performance.now() + 5000;
                     
-                    player.chats.push({ m: msg, t: Date.now() });
+                    const msgTime = Date.now();
+                    player.chats.push({ m: msg, t: msgTime });
                     if (player.chats.length > 3) player.chats.shift();
                     
                     if (!player.activeChats) player.activeChats = [];
-                    player.activeChats.push({ m: msg, t: Date.now(), localStartTime: performance.now() });
+                    player.activeChats.push({ m: msg, t: msgTime, localStartTime: performance.now() });
                     if (player.activeChats.length > 3) player.activeChats.shift();
 
-                    if (myId) {
-                        set(ref(db, `players/${myId}`), {
-                            name: player.name,
-                            team: player.team,
-                            x: player.x,
-                            y: player.y,
-                            angle: player.angle,
-                            scale: player.scale,
-                            chats: player.chats
-                        });
-                    }
+                    syncPlayer();
                 }
             }
             chatContainer.style.display = 'none';
@@ -371,17 +403,7 @@ function bindUI() {
             } else {
                 player.team = "Civilians";
                 spawnPlayer("civilian spawn");
-                if (myId) {
-                    set(ref(db, `players/${myId}`), {
-                        name: player.name,
-                        team: player.team,
-                        x: player.x,
-                        y: player.y,
-                        angle: player.angle,
-                        scale: player.scale,
-                        chats: player.chats
-                    });
-                }
+                syncPlayer();
             }
         });
     }
@@ -394,17 +416,7 @@ function bindUI() {
             } else {
                 player.team = "Military";
                 spawnPlayer("military spawn");
-                if (myId) {
-                    set(ref(db, `players/${myId}`), {
-                        name: player.name,
-                        team: player.team,
-                        x: player.x,
-                        y: player.y,
-                        angle: player.angle,
-                        scale: player.scale,
-                        chats: player.chats
-                    });
-                }
+                syncPlayer();
             }
         });
     }
@@ -834,17 +846,19 @@ function update(dt) {
     player.angle = Math.atan2(scaledMouseY - playerScreenY, scaledMouseX - playerScreenX) + (Math.PI / 2);
 
     if (myId && document.getElementById('play-menu').style.display === 'none') {
+        
+        player.moneyTimer += dt;
+        if (player.moneyTimer >= player.nextMoneyReward) {
+            player.moneyTimer = 0;
+            player.nextMoneyReward = Math.random() * 15 + 15;
+            player.money += Math.floor(Math.random() * 26) + 25;
+            updateLeaderboard(); 
+            syncPlayer();
+        }
+
         const now = performance.now();
         if (now - lastSyncTime > 100) { 
-            set(ref(db, `players/${myId}`), {
-                name: player.name,
-                team: player.team,
-                x: player.x,
-                y: player.y,
-                angle: player.angle,
-                scale: player.scale,
-                chats: player.chats
-            });
+            syncPlayer();
             lastSyncTime = now;
         }
     }
@@ -944,7 +958,7 @@ function render() {
                 let currentYOffset = 0;
                 for (let i = p.activeChats.length - 1; i >= 0; i--) {
                     let chat = p.activeChats[i];
-                    let duration = Math.max(4000, chat.m.length * 100);
+                    let duration = Math.min(8000, Math.max(4000, chat.m.length * 100));
                     let chatElapsed = performance.now() - chat.localStartTime;
 
                     if (chatElapsed > duration) {
@@ -968,7 +982,7 @@ function render() {
                     ctx.globalAlpha = chatAlpha;
                     ctx.font = "bold 13px 'Segoe UI'";
                     
-                    let lines = getLines(ctx, chat.m, 180);
+                    let lines = getLines(ctx, chat.m, 220);
                     let bubbleHeight = 10 + (lines.length * 16);
                     let bubbleWidth = 0;
                     lines.forEach(l => {
