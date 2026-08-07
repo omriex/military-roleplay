@@ -215,19 +215,6 @@ onAuthStateChanged(auth, (user) => {
                                 }
                             });
                         }
-                    }
-                        if (!p.activeChats) p.activeChats = [];
-                        if (!p.seenChats) p.seenChats = new Set();
-                        
-                        remote.chats.forEach(rc => {
-                            if (!p.seenChats.has(rc.t)) {
-                                p.seenChats.add(rc.t);
-                                p.activeChats.push({ m: rc.m, t: rc.t, localStartTime: performance.now() });
-                            }
-                        });
-                        if (p.activeChats.length > 3) {
-                            p.activeChats = p.activeChats.slice(p.activeChats.length - 3);
-                        }
                         if (p.seenChats.size > 20) {
                             p.seenChats = new Set(Array.from(p.seenChats).slice(-10));
                         }
