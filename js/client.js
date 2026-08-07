@@ -45,8 +45,6 @@ function syncPlayer() {
         angle: player.angle,
         scale: player.scale,
         chats: player.chats,
-        wearingCap: player.wearingCap || false,
-        wearingUniform: player.wearingUniform || false,
         lastSeen: Date.now()
     });
 }
@@ -127,7 +125,7 @@ function updateLeaderboard() {
     const sortedPlayers = Object.values(allPlayers).sort((a, b) => (b.money || 0) - (a.money || 0));
 
     for (const p of sortedPlayers) {
-        if (p && p.name && !p.zombie) {
+        if (p && p.name) {
             let tColor = p.team === 'Military' ? '#22b534' : '#b7ffa1';
             
             html += `<div style="display: flex; justify-content: space-between; width: 100%;">
@@ -137,10 +135,7 @@ function updateLeaderboard() {
         }
     }
     
-    if (scoreboardList.dataset.lastHtml !== html) {
-        scoreboardList.innerHTML = html;
-        scoreboardList.dataset.lastHtml = html;
-    }
+    scoreboardList.innerHTML = html;
     if (playerAttr) playerAttr.innerText = (player.money || 0).toString();
 }
 
@@ -169,24 +164,9 @@ onAuthStateChanged(auth, (user) => {
                 if (id === myId) continue;
 
                 let remote = data[id];
-                let p_existing = allPlayers[id];
                 
-                if (p_existing) {
-                    if (p_existing.lastSeen !== remote.lastSeen) {
-                        remote.localLastUpdate = now;
-                        p_existing.zombie = false;
-                    } else {
-                        remote.localLastUpdate = p_existing.localLastUpdate || now;
-                    }
-                } else {
-                    remote.localLastUpdate = now;
-                }
-
-                if (now - remote.localLastUpdate > 15000) {
-                    if (!allPlayers[id]) allPlayers[id] = {};
-                    allPlayers[id].zombie = true;
-                    allPlayers[id].lastSeen = remote.lastSeen;
-                    allPlayers[id].localLastUpdate = remote.localLastUpdate;
+                if (now - (remote.lastSeen || 0) > 15000) {
+                    delete allPlayers[id];
                     continue;
                 }
                 
@@ -196,13 +176,13 @@ onAuthStateChanged(auth, (user) => {
                         targetX: remote.x,
                         targetY: remote.y,
                         targetAngle: remote.angle,
-                        zombie: true,
                         activeChats: [],
                         seenChats: new Set()
                     };
                     if (remote.chats) {
                         remote.chats.forEach(rc => {
                             allPlayers[id].seenChats.add(rc.t);
+                            allPlayers[id].activeChats.push({ m: rc.m, t: rc.t, localStartTime: performance.now() });
                         });
                     }
                 } else {
@@ -219,9 +199,23 @@ onAuthStateChanged(auth, (user) => {
                     p.wearingCap = remote.wearingCap || false;
                     p.wearingUniform = remote.wearingUniform || false;
                     p.lastSeen = remote.lastSeen;
-                    p.localLastUpdate = remote.localLastUpdate;
+                    p.localLastUpdate = Date.now();
                     
                     if (remote.chats) {
+                        if (!p.activeChats) p.activeChats = [];
+                        if (!p.seenChats) p.seenChats = new Set();
+                        if (p.seenChats.size === 0) {
+                            remote.chats.forEach(rc => p.seenChats.add(rc.t));
+                        } else {
+                            remote.chats.forEach(rc => {
+                                if (!p.seenChats.has(rc.t)) {
+                                    p.seenChats.add(rc.t);
+                                    p.activeChats.push({ m: rc.m, t: rc.t, localStartTime: performance.now() });
+                                    if (p.activeChats.length > 3) p.activeChats.shift();
+                                }
+                            });
+                        }
+                    }
                         if (!p.activeChats) p.activeChats = [];
                         if (!p.seenChats) p.seenChats = new Set();
                         
@@ -279,7 +273,7 @@ let assetsLoaded = 0;
 
 const outfitOffsets = {
     uniform: { x: 0, y: 0, w: 64, h: 64 },
-    cap: { x: 0, y: -10, w: 64, h: 64 }
+    cap: { x: 2, y: -5, w: 60, h: 71 }
 };
 
 const keys = {
@@ -551,32 +545,11 @@ function bindUI() {
             }
         });
     }
-    
-    setTimeout(() => {
-        const els = Array.from(document.querySelectorAll('*')).filter(el => el.children.length === 0 && el.textContent && el.textContent.includes('SUB-DIVISIONS'));
-        els.forEach(el => {
-            el.style.cursor = 'pointer';
-            el.addEventListener('click', (e) => {
-                e.stopPropagation();
-                let container = el.nextElementSibling || (el.parentElement ? el.parentElement.nextElementSibling : null);
-                if (container) {
-                    container.style.display = (container.style.display === 'none' || container.style.display === '') ? 'block' : 'none';
-                }
-            });
-        });
-    }, 2000);
 }
 
 function fixUI() {
     const fixStyle = document.createElement('style');
     fixStyle.innerHTML = `
-        ::-webkit-scrollbar { width: 6px !important; }
-        ::-webkit-scrollbar-track { background: transparent !important; }
-        ::-webkit-scrollbar-thumb { background: #e67e22 !important; border-radius: 4px !important; }
-        ::-webkit-scrollbar-thumb:hover { background: #d35400 !important; }
-        #division-selector-ui { overflow-x: hidden !important; }
-        #division-selector-ui .modal-body { padding-right: 2px !important; }
-        #division-selector-ui .row { margin-right: 0 !important; margin-left: 0 !important; width: 100% !important; }
         *, *::before, *::after { box-shadow: none !important; text-shadow: none !important; }
         #my-score-div, #my-score-div *, .ui-text-scoreboard, .ui-text-scoreboard div { user-select: none !important; -webkit-user-select: none !important; -moz-user-select: none !important; -ms-user-select: none !important; }
         input:hover, textarea:hover, #note-textarea:hover, #player-input-field:hover, select:hover { transform: none !important; filter: none !important; }
@@ -786,7 +759,7 @@ function fixUI() {
         const slot = document.createElement('div');
         slot.id = 'inv-slot-' + i;
         slot.className = 'inv-slot' + (i === 1 ? ' selected' : '');
-        slot.innerText = i;
+        slot.innerText = '';
         slot.onclick = () => window.selectSlot(i);
         invSlotsRow.appendChild(slot);
     }
@@ -1062,7 +1035,6 @@ function update(dt) {
     for (let id in allPlayers) {
         if (id === myId) continue;
         let p = allPlayers[id];
-        if (p.zombie) continue;
         
         if (p.targetX !== undefined) {
             p.x += (p.targetX - p.x) * dt * 12;
@@ -1074,6 +1046,19 @@ function update(dt) {
         }
     }
 }
+
+setInterval(() => {
+    const now = Date.now();
+    for (let id in allPlayers) {
+        if (id === myId) continue;
+        let p = allPlayers[id];
+        if (p.localLastUpdate && (now - p.localLastUpdate > 5000)) {
+            p.zombie = true;
+        } else {
+            p.zombie = false;
+        }
+    }
+}, 2000);
 
 setInterval(() => {
     if (myId && document.getElementById('play-menu').style.display === 'none') {
@@ -1136,18 +1121,21 @@ function render() {
             ctx.translate(pRenderX, pRenderY);
             ctx.rotate(drawAngle);
             ctx.drawImage(playerImg, -pScaledW / 2, -pScaledH / 2, pScaledW, pScaledH);
-            
+            const outfitRatio = (p.width || 45) / 64;
             if (p.wearingUniform && militaryUniformImg) {
-                const uw = outfitOffsets.uniform.w * drawScale;
-                const uh = outfitOffsets.uniform.h * drawScale;
-                ctx.drawImage(militaryUniformImg, (outfitOffsets.uniform.x * drawScale) - uw / 2, (outfitOffsets.uniform.y * drawScale) - uh / 2, uw, uh);
+                const uw = outfitOffsets.uniform.w * drawScale * outfitRatio;
+                const uh = outfitOffsets.uniform.h * drawScale * outfitRatio;
+                const ux = outfitOffsets.uniform.x * drawScale * outfitRatio;
+                const uy = outfitOffsets.uniform.y * drawScale * outfitRatio;
+                ctx.drawImage(militaryUniformImg, ux - uw / 2, uy - uh / 2, uw, uh);
             }
             if (p.wearingCap && militaryCapImg) {
-                const cw = outfitOffsets.cap.w * drawScale;
-                const ch = outfitOffsets.cap.h * drawScale;
-                ctx.drawImage(militaryCapImg, (outfitOffsets.cap.x * drawScale) - cw / 2, (outfitOffsets.cap.y * drawScale) - ch / 2, cw, ch);
+                const cw = outfitOffsets.cap.w * drawScale * outfitRatio;
+                const ch = outfitOffsets.cap.h * drawScale * outfitRatio;
+                const cx = outfitOffsets.cap.x * drawScale * outfitRatio;
+                const cy = outfitOffsets.cap.y * drawScale * outfitRatio;
+                ctx.drawImage(militaryCapImg, cx - cw / 2, cy - ch / 2, cw, ch);
             }
-            
             ctx.restore();
         }
     }
@@ -1164,7 +1152,7 @@ function render() {
         for (let id in allPlayers) {
             const p = (id === myId) ? player : allPlayers[id];
             
-            if ((!p.name || p.zombie) && id !== myId) continue;
+            if (!p.name && id !== myId) continue;
             if (id === myId && isPlayMenuVisible) continue;
 
             let drawTeam = p.team || "Civilians";
@@ -1208,7 +1196,7 @@ function render() {
         for (let id in allPlayers) {
             const p = (id === myId) ? player : allPlayers[id];
             
-            if ((!p.name || p.zombie) && id !== myId) continue;
+            if (!p.name && id !== myId) continue;
             if (id === myId && isPlayMenuVisible) continue;
             
             const pRenderX = p.x - camera.x + ((p.width || 45) / 2);
@@ -1323,7 +1311,7 @@ function gameLoop(now) {
         for (const key in gameData.variables) {
             if (key.toLowerCase().includes('locker') && gameData.variables[key].default) {
                 const r = gameData.variables[key].default;
-                if (player.x >= r.x && player.x <= r.x + r.width && player.y >= r.y && player.y <= r.y + r.height) {
+                if (Math.abs(player.x - r.x) <= r.width / 2 && Math.abs(player.y - r.y) <= r.height / 2) {
                     return true;
                 }
             }
