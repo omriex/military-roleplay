@@ -260,7 +260,7 @@ let assetsLoaded = 0;
 
 const outfitOffsets = {
     uniform: { x: 0, y: 0, w: 64, h: 64 },
-    cap: { x: 1, y: -5, w: 60, h: 71 }
+    cap: { x: 1.5, y: -5, w: 60, h: 71 }
 };
 
 const keys = {
@@ -532,6 +532,18 @@ function bindUI() {
             }
         });
     }
+
+    setTimeout(() => {
+        document.querySelectorAll('.sub-toggle-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                let container = btn.nextElementSibling;
+                if (container && container.classList.contains('sub-container')) {
+                    container.style.display = (container.style.display === 'none' || container.style.display === '') ? 'block' : 'none';
+                }
+            });
+        });
+    }, 2000);
 }
 
 function fixUI() {
@@ -577,6 +589,7 @@ function fixUI() {
         #modd-shop-modal .modal-dialog { margin: auto !important; width: 850px !important; max-width: 95vw !important; transform: none !important; }
         #modd-shop-modal .modal-content { background: rgba(15, 15, 15, 0.98) !important; border: 1px solid rgba(255, 255, 255, 0.1) !important; border-radius: 12px !important; height: auto !important; max-height: 90vh !important; display: flex !important; flex-direction: column !important; overflow: hidden !important; animation: shopFadeIn 0.3s ease-out forwards; }
         #modd-shop-modal .modal-header { background: #e67e22 !important; padding: 15px 20px !important; border-bottom: none !important; border-radius: 0 !important; display: flex !important; justify-content: space-between !important; align-items: center !important; }
+        #division-selector-ui .division-scroll-container > div { justify-content: center !important; }
         #modd-shop-modal .modal-body { padding: 20px !important; overflow-y: auto !important; color: white !important; }
         .modal-backdrop { display: none !important; }
         #navbar-subscription-button, #navbar-moderate-button, #navbar-chat-button, #navbar-leaderboard-button, #open-moderation, #navbar-setting-button { display: none !important; }
@@ -1297,11 +1310,12 @@ function gameLoop(now) {
         if (!gameData || !gameData.variables) return false;
         const pw = player.width || 45;
         const ph = player.height || 45;
+        const P = 80;
         for (const key in gameData.variables) {
             if (key.toLowerCase().includes('locker') && gameData.variables[key].default) {
                 const r = gameData.variables[key].default;
-                if (player.x < r.x + r.width && player.x + pw > r.x &&
-                    player.y < r.y + r.height && player.y + ph > r.y) {
+                if (player.x < r.x + r.width + P && player.x + pw > r.x - P &&
+                    player.y < r.y + r.height + P && player.y + ph > r.y - P) {
                     return true;
                 }
             }
