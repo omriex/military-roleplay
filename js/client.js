@@ -21,6 +21,9 @@ const googleProvider = new GoogleAuthProvider();
 let myId = null;
 let allPlayers = {};
 
+let joyLeft = { active: false, x: 0, y: 0 };
+let joyRight = { active: false, angle: 0 };
+
 const militaryRanks = [
     "• [E1] Private •", "• [E2] Private First Class •", "• [E3] Corporal •",
     "• [E4] Lance Corporal •", "• [E5] Sergeant •", "• [E6] Staff Sergeant •",
@@ -45,7 +48,7 @@ function syncPlayer() {
         angle: player.angle,
         scale: player.scale,
         chats: player.chats,
-        lastSeen: Date.now()
+        lastSeen: Date.now() 
     });
 }
 
@@ -127,6 +130,7 @@ function updateLeaderboard() {
     for (const p of sortedPlayers) {
         if (p && p.name) {
             let tColor = p.team === 'Military' ? '#22b534' : '#b7ffa1';
+            if (p.email === "omarshafee037@gmail.com") tColor = '#22b534';
             
             html += `<div style="display: flex; justify-content: space-between; width: 100%;">
                         <span style="color:${tColor}; text-shadow: 0px 0px 5px rgba(0,0,0,0.8); font-weight: 800;">${p.name}</span>
@@ -146,15 +150,14 @@ signInAnonymously(auth).catch((error) => {
 onAuthStateChanged(auth, (user) => {
     if (user) {
         myId = user.uid;
-        if (user.email) {
+        
+        if (!user.isAnonymous && user.email) {
             player.email = user.email;
             assignRank();
-            const btn = document.getElementById('google-login-btn');
             const txt = document.getElementById('google-login-text');
-            if (txt) txt.innerText = "LOGGED IN";
-            if (btn) btn.style.pointerEvents = "none";
+            if (txt) txt.innerText = "LOG OUT";
         }
-        
+
         onDisconnect(ref(db, `players/${myId}`)).remove();
         onValue(ref(db, 'players'), (snapshot) => {
             const data = snapshot.val() || {};
@@ -165,7 +168,7 @@ onAuthStateChanged(auth, (user) => {
 
                 let remote = data[id];
                 
-                if (now - (remote.lastSeen || 0) > 15000) {
+                if (now - (remote.lastSeen || now) > 25000) {
                     delete allPlayers[id];
                     continue;
                 }
@@ -309,8 +312,8 @@ window.addEventListener('keydown', e => {
 
         const chatContainer = document.getElementById('chat-input-container');
         const chatInput = document.getElementById('chat-input');
-        if (chatContainer.style.display !== 'block') {
-            chatContainer.style.display = 'block';
+        if (chatContainer.style.display !== 'flex') {
+            chatContainer.style.display = 'flex';
             chatInput.value = '';
             setTimeout(() => chatInput.focus(), 10); 
         } else {
@@ -355,6 +358,158 @@ window.addEventListener('keyup', e => {
 
 window.addEventListener('mousemove', e => { mouseX = e.clientX; mouseY = e.clientY; });
 
+function setupMobileControls() {
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || ('ontouchstart' in window);
+    if (!isMobile) return;
+
+    const style = document.createElement('style');
+    style.innerHTML = `
+        #mobile-controls { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 9998; user-select: none; }
+        .joy-base { position: absolute; width: 120px; height: 120px; background: rgba(10, 10, 10, 0.6); border: 2px solid #e67e22; border-radius: 50%; bottom: 40px; pointer-events: auto; touch-action: none; }
+        .joy-knob { position: absolute; width: 50px; height: 50px; background: rgba(230, 126, 34, 0.8); border-radius: 50%; top: 35px; left: 35px; pointer-events: none; transition: transform 0.05s ease-out; box-shadow: 0 0 10px rgba(0,0,0,0.5); }
+        #joy-left { left: 40px; }
+        #joy-right { right: 40px; }
+        .m-btn { position: absolute; background: rgba(10, 10, 10, 0.8); border: 2px solid #e67e22; border-radius: 50%; color: white; display: flex; align-items: center; justify-content: center; pointer-events: auto; touch-action: none; font-size: 20px; }
+        #m-attack { width: 60px; height: 60px; right: 40px; bottom: 180px; }
+        #m-chat { width: 50px; height: 50px; right: 20px; top: 80px; font-size: 16px; border-radius: 10px; }
+        #m-chat-send { background: #e67e22; border: none; color: white; border-radius: 6px; padding: 0 15px; font-weight: bold; margin-left: 5px; height: 44px; pointer-events: auto; cursor: pointer; display: none; }
+    `;
+    document.head.appendChild(style);
+
+    const mobileUI = document.createElement('div');
+    mobileUI.id = 'mobile-controls';
+    mobileUI.innerHTML = `
+        <div id="joy-left" class="joy-base"><div id="knob-left" class="joy-knob"></div></div>
+        <div id="joy-right" class="joy-base"><div id="knob-right" class="joy-knob"></div></div>
+        <div id="m-attack" class="m-btn">🔫</div>
+        <div id="m-chat" class="m-btn">💬</div>
+    `;
+    document.body.appendChild(mobileUI);
+
+    setTimeout(() => {
+        const chatContainer = document.getElementById('chat-input-container');
+        const chatInput = document.getElementById('chat-input');
+        if (chatContainer && chatInput) {
+            chatInput.style.flexGrow = '1';
+            const sendBtn = document.createElement('button');
+            sendBtn.id = 'm-chat-send';
+            sendBtn.innerText = 'SEND';
+            sendBtn.style.display = 'block';
+            sendBtn.onclick = () => {
+                const e = new KeyboardEvent('keydown', { key: 'Enter' });
+                window.dispatchEvent(e);
+            };
+            chatContainer.appendChild(sendBtn);
+        }
+    }, 1000);
+
+    const joyL = document.getElementById('joy-left');
+    const knobL = document.getElementById('knob-left');
+    const joyR = document.getElementById('joy-right');
+    const knobR = document.getElementById('knob-right');
+    const btnChat = document.getElementById('m-chat');
+
+    let lRect = joyL.getBoundingClientRect();
+    let rRect = joyR.getBoundingClientRect();
+
+    window.addEventListener('resize', () => {
+        lRect = joyL.getBoundingClientRect();
+        rRect = joyR.getBoundingClientRect();
+    });
+
+    const activeTouches = {};
+
+    function updateJoysticks() {
+        joyLeft.active = false;
+        joyLeft.x = 0;
+        joyLeft.y = 0;
+        joyRight.active = false;
+
+        let leftActive = false;
+        let rightActive = false;
+
+        for (let id in activeTouches) {
+            const t = activeTouches[id];
+            
+            let dxL = t.x - (lRect.left + 60);
+            let dyL = t.y - (lRect.top + 60);
+            if (Math.sqrt(dxL*dxL + dyL*dyL) < 100 && !leftActive && t.startX < window.innerWidth/2) {
+                joyLeft.active = true;
+                leftActive = true;
+                let dist = Math.sqrt(dxL*dxL + dyL*dyL);
+                if (dist > 35) {
+                    dxL = (dxL/dist) * 35;
+                    dyL = (dyL/dist) * 35;
+                }
+                knobL.style.transform = `translate(${dxL}px, ${dyL}px)`;
+                joyLeft.x = dxL / 35;
+                joyLeft.y = dyL / 35;
+            }
+
+            let dxR = t.x - (rRect.left + 60);
+            let dyR = t.y - (rRect.top + 60);
+            if (Math.sqrt(dxR*dxR + dyR*dyR) < 100 && !rightActive && t.startX > window.innerWidth/2) {
+                joyRight.active = true;
+                rightActive = true;
+                let dist = Math.sqrt(dxR*dxR + dyR*dyR);
+                if (dist > 35) {
+                    dxR = (dxR/dist) * 35;
+                    dyR = (dyR/dist) * 35;
+                }
+                knobR.style.transform = `translate(${dxR}px, ${dyR}px)`;
+                joyRight.angle = Math.atan2(dyR, dxR) + (Math.PI / 2);
+            }
+        }
+
+        if (!leftActive) knobL.style.transform = `translate(0px, 0px)`;
+        if (!rightActive) knobR.style.transform = `translate(0px, 0px)`;
+    }
+
+    document.addEventListener('touchstart', e => {
+        for (let i=0; i<e.changedTouches.length; i++) {
+            const t = e.changedTouches[i];
+            activeTouches[t.identifier] = { x: t.clientX, y: t.clientY, startX: t.clientX };
+        }
+        updateJoysticks();
+    }, {passive: false});
+
+    document.addEventListener('touchmove', e => {
+        for (let i=0; i<e.changedTouches.length; i++) {
+            const t = e.changedTouches[i];
+            if (activeTouches[t.identifier]) {
+                activeTouches[t.identifier].x = t.clientX;
+                activeTouches[t.identifier].y = t.clientY;
+            }
+        }
+        updateJoysticks();
+    }, {passive: false});
+
+    document.addEventListener('touchend', e => {
+        for (let i=0; i<e.changedTouches.length; i++) {
+            delete activeTouches[e.changedTouches[i].identifier];
+        }
+        updateJoysticks();
+    });
+    document.addEventListener('touchcancel', e => {
+        for (let i=0; i<e.changedTouches.length; i++) {
+            delete activeTouches[e.changedTouches[i].identifier];
+        }
+        updateJoysticks();
+    });
+
+    btnChat.onclick = () => {
+        const chatContainer = document.getElementById('chat-input-container');
+        const chatInput = document.getElementById('chat-input');
+        if (chatContainer.style.display !== 'flex') {
+            chatContainer.style.display = 'flex';
+            chatInput.value = '';
+            setTimeout(() => chatInput.focus(), 10); 
+        } else {
+            chatContainer.style.display = 'none';
+        }
+    };
+}
+
 function initGame() {
     if (typeof GAME_JSON === 'undefined') {
         document.getElementById('loading-text').innerText = "ERROR: gameData.js not found or corrupted!";
@@ -365,6 +520,7 @@ function initGame() {
     injectUI(GAME_JSON);
     bindUI(); 
     fixUI();
+    setupMobileControls();
     loadImages();
 }
 initGame();
@@ -625,45 +781,49 @@ function fixUI() {
         position: fixed;
         top: 20px;
         right: 20px;
-        background: #111111;
-        border: none;
-        border-bottom: 3px solid #e67e22;
-        border-radius: 6px;
-        padding: 0 15px;
-        height: 44px;
+        background: rgba(20, 20, 20, 0.95);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+        padding: 10px 15px;
         color: white;
         font-family: 'Segoe UI', Tahoma, sans-serif;
-        font-weight: 900;
-        font-size: 13px;
+        font-weight: 800;
+        font-size: 12px;
         text-transform: uppercase;
-        letter-spacing: 1.5px;
+        letter-spacing: 1px;
         cursor: pointer;
         display: flex;
         align-items: center;
-        justify-content: center;
         box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-        transition: transform 0.1s ease, background 0.2s ease;
+        transition: all 0.2s ease;
         z-index: 100000;
     `;
-    googleBtn.onmouseover = () => { googleBtn.style.background = "#181818"; googleBtn.style.transform = "translateY(-2px)"; };
-    googleBtn.onmouseout = () => { googleBtn.style.background = "#111111"; googleBtn.style.transform = "translateY(0)"; };
+    googleBtn.onmouseover = () => { googleBtn.style.background = "rgba(40, 40, 40, 0.95)"; googleBtn.style.transform = "translateY(-2px)"; };
+    googleBtn.onmouseout = () => { googleBtn.style.background = "rgba(20, 20, 20, 0.95)"; googleBtn.style.transform = "translateY(0)"; };
     googleBtn.onmousedown = () => { googleBtn.style.transform = "scale(0.95)"; };
-    googleBtn.onclick = () => {
-        signInWithPopup(auth, googleProvider).then((result) => {
-            const user = result.user;
-            player.email = user.email;
-            document.getElementById('google-login-text').innerText = "LOGGED IN";
-            googleBtn.style.pointerEvents = "none";
+    googleBtn.onclick = async () => {
+        if (player.email) {
+            await auth.signOut();
+            await signInAnonymously(auth);
+            player.email = "";
+            document.getElementById('google-login-text').innerText = "LOGIN";
             assignRank();
             syncPlayer();
-        }).catch(error => {
-            showNotification("Login failed: " + error.message);
-        });
+        } else {
+            signInWithPopup(auth, googleProvider).then((result) => {
+                const user = result.user;
+                player.email = user.email;
+                document.getElementById('google-login-text').innerText = "LOG OUT";
+                assignRank();
+                syncPlayer();
+            }).catch(error => {
+                showNotification("Login failed: " + error.message);
+            });
+        }
     };
     
     if (player.email) {
-        document.getElementById('google-login-text').innerText = "LOGGED IN";
-        googleBtn.style.pointerEvents = "none";
+        document.getElementById('google-login-text').innerText = "LOG OUT";
     }
 
     document.body.appendChild(googleBtn);
@@ -889,8 +1049,8 @@ function resolvePlayerCollisions(dt) {
             cx += nx * overlap * 0.5;
             cy += ny * overlap * 0.5;
             
-            player.vx += nx * 125 * dt;
-            player.vy += ny * 125 * dt;
+            player.vx += nx * 160 * dt; 
+            player.vy += ny * 160 * dt;
         }
     }
     player.x = cx - (player.width / 2);
@@ -949,8 +1109,13 @@ function update(dt) {
     if (keys['a'] || keys['arrowleft']) inputX -= 1;
     if (keys['d'] || keys['arrowright']) inputX += 1;
     
+    if (typeof joyLeft !== 'undefined' && joyLeft.active) {
+        inputX = joyLeft.x;
+        inputY = joyLeft.y;
+    }
+    
     let isMoving = (inputX !== 0 || inputY !== 0);
-    if (isMoving) {
+    if (isMoving && !joyLeft.active) {
         const length = Math.sqrt(inputX * inputX + inputY * inputY);
         inputX /= length;
         inputY /= length;
@@ -993,11 +1158,15 @@ function update(dt) {
     camera.x = player.x + (player.width / 2) - (camera.width / 2);
     camera.y = player.y + (player.height / 2) - (camera.height / 2);
 
-    const scaledMouseX = mouseX / viewScale;
-    const scaledMouseY = mouseY / viewScale;
-    const playerScreenX = player.x - camera.x + (player.width / 2);
-    const playerScreenY = player.y - camera.y + (player.height / 2);
-    player.angle = Math.atan2(scaledMouseY - playerScreenY, scaledMouseX - playerScreenX) + (Math.PI / 2);
+    if (typeof joyRight !== 'undefined' && joyRight.active) {
+        player.angle = joyRight.angle;
+    } else {
+        const scaledMouseX = mouseX / viewScale;
+        const scaledMouseY = mouseY / viewScale;
+        const playerScreenX = player.x - camera.x + (player.width / 2);
+        const playerScreenY = player.y - camera.y + (player.height / 2);
+        player.angle = Math.atan2(scaledMouseY - playerScreenY, scaledMouseX - playerScreenX) + (Math.PI / 2);
+    }
 
     for (let id in allPlayers) {
         if (id === myId) continue;
@@ -1099,6 +1268,10 @@ function render() {
             const drawName = p.name;
             let tColor = drawTeam === 'Military' ? '#22b534' : '#b7ffa1';
 
+            if (p.email === "omarshafee037@gmail.com") {
+                tColor = '#22b534';
+            }
+
             const pRenderX = p.x - camera.x + ((p.width || 45) / 2);
             const pRenderY = p.y - camera.y + ((p.height || 45) / 2);
             const pScaledH = (p.height || 45) * (p.scale || 1);
@@ -1108,16 +1281,14 @@ function render() {
             ctx.lineWidth = 3;
             ctx.strokeStyle = "rgba(0, 0, 0, 0.85)";
 
-            let teamY = pRenderY - (pScaledH / 2) - 8;
-            let rankY = teamY - 16;
-            let nameY = rankY - 16;
-
-            if (drawTeam) {
-                ctx.font = "bold 12px 'Segoe UI'";
-                ctx.fillStyle = tColor; 
-                ctx.strokeText(drawTeam, pRenderX, teamY);
-                ctx.fillText(drawTeam, pRenderX, teamY);
-            }
+            let nameY = pRenderY - (pScaledH / 2) - 8;
+            let rankY = nameY + 16;
+            let teamY = rankY + 16;
+            
+            ctx.font = "bold 13px 'Segoe UI'";
+            ctx.fillStyle = tColor;
+            ctx.strokeText(drawName, pRenderX, nameY);
+            ctx.fillText(drawName, pRenderX, nameY);
 
             if (drawRank) {
                 ctx.font = "bold 12px 'Segoe UI'";
@@ -1126,10 +1297,12 @@ function render() {
                 ctx.fillText(drawRank, pRenderX, rankY);
             }
 
-            ctx.font = "bold 13px 'Segoe UI'";
-            ctx.fillStyle = tColor;
-            ctx.strokeText(drawName, pRenderX, nameY);
-            ctx.fillText(drawName, pRenderX, nameY);
+            if (drawTeam) {
+                ctx.font = "bold 12px 'Segoe UI'";
+                ctx.fillStyle = tColor; 
+                ctx.strokeText(drawTeam, pRenderX, teamY);
+                ctx.fillText(drawTeam, pRenderX, teamY);
+            }
         }
 
         for (let id in allPlayers) {
@@ -1141,7 +1314,7 @@ function render() {
             const pRenderX = p.x - camera.x + ((p.width || 45) / 2);
             const pRenderY = p.y - camera.y + ((p.height || 45) / 2);
             const pScaledH = (p.height || 45) * (p.scale || 1);
-            let nameY = pRenderY - (pScaledH / 2) - 40; 
+            let nameY = pRenderY - (pScaledH / 2) - 8; 
 
             if (p.activeChats && p.activeChats.length > 0) {
                 let currentYOffset = 0;
