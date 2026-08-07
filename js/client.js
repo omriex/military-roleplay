@@ -164,8 +164,19 @@ onAuthStateChanged(auth, (user) => {
                 if (id === myId) continue;
 
                 let remote = data[id];
+                let p_existing = allPlayers[id];
                 
-                if (now - (remote.lastSeen || 0) > 15000) {
+                if (p_existing) {
+                    if (p_existing.lastSeen !== remote.lastSeen) {
+                        remote.localLastUpdate = now;
+                    } else {
+                        remote.localLastUpdate = p_existing.localLastUpdate || now;
+                    }
+                } else {
+                    remote.localLastUpdate = now;
+                }
+
+                if (now - remote.localLastUpdate > 15000) {
                     delete allPlayers[id];
                     continue;
                 }
@@ -196,6 +207,8 @@ onAuthStateChanged(auth, (user) => {
                     p.team = remote.team || "Civilians";
                     p.rank = remote.rank || "• Civilian •";
                     p.money = remote.money || 0;
+                    p.lastSeen = remote.lastSeen;
+                    p.localLastUpdate = remote.localLastUpdate;
                     
                     if (remote.chats) {
                         if (!p.activeChats) p.activeChats = [];
