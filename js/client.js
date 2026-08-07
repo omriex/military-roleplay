@@ -86,7 +86,7 @@ function assignRank() {
 function spawnPlayer(regionName) {
     if (typeof GAME_JSON === 'undefined') return;
     const gameData = GAME_JSON.data || GAME_JSON;
-    if (gameData?.variables && gameData.variables[regionName] && gameData.variables[regionName].default) {
+    if (gameData.variables && gameData.variables[regionName] && gameData.variables[regionName].default) {
         const spawnRegion = gameData.variables[regionName].default;
         player.x = spawnRegion.x + (Math.random() * spawnRegion.width) - (player.width / 2);
         player.y = spawnRegion.y + (Math.random() * spawnRegion.height) - (player.height / 2);
@@ -270,9 +270,19 @@ function preventZoom(e) {
 }
 window.addEventListener('wheel', preventZoom, { passive: false });
 window.addEventListener('keydown', preventZoom, { passive: false });
+window.addEventListener('mousedown', e => {
+    if (e.button === 0 && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
+        isAttacking = true;
+    }
+});
+window.addEventListener('mouseup', e => {
+    if (e.button === 0) {
+        isAttacking = false;
+    }
+});
 
 const canvas = document.getElementById('gameCanvas');
-const ctx = canvas?.getContext('2d', { alpha: false });
+const ctx = canvas.getContext('2d', { alpha: false });
 
 const TILESHEET_URL = "assets/tilesheet.png";
 const PLAYER_URL = "assets/player.png";
@@ -322,8 +332,6 @@ window.addEventListener('keydown', e => {
 
         const chatContainer = document.getElementById('chat-input-container');
         const chatInput = document.getElementById('chat-input');
-        if (!chatContainer || !chatInput) return;
-        
         if (chatContainer.style.display !== 'block') {
             chatContainer.style.display = 'block';
             chatInput.value = '';
@@ -351,11 +359,11 @@ window.addEventListener('keydown', e => {
             }
             chatContainer.style.display = 'none';
             chatInput.blur();
-            if (canvas) canvas.focus();
+            canvas.focus();
         }
         return;
     }
-    if (document.activeElement !== document.getElementById('chat-input') && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
+    if (document.activeElement !== document.getElementById('chat-input') && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
         if (e.key.toLowerCase() === 'b') {
             const shopMenu = document.getElementById('shop-ui');
             if (shopMenu) shopMenu.style.display = shopMenu.style.display === 'flex' ? 'none' : 'flex';
@@ -370,40 +378,27 @@ window.addEventListener('keyup', e => {
 
 window.addEventListener('mousemove', e => { mouseX = e.clientX; mouseY = e.clientY; });
 
-window.initGame = function initGame() {
-    try {
-        if (typeof GAME_JSON === 'undefined') {
-            const loadText = document.getElementById('loading-text');
-            if (loadText) {
-                loadText.innerText = "ERROR: gameData.js not found or corrupted!";
-                loadText.style.color = "red";
-            }
-            return;
-        }
-        setupMap(GAME_JSON);
-        injectUI(GAME_JSON);
-        bindUI(); 
-        fixUI();
-        setupMobileControls();
-        loadImages();
-    } catch (e) {
-        console.error("Critical Engine Boot Error:", e);
-        const loadText = document.getElementById('loading-text');
-        if (loadText) {
-            loadText.innerText = "BOOT ERROR: Check console for details.";
-            loadText.style.color = "red";
-        }
+function initGame() {
+    if (typeof GAME_JSON === 'undefined') {
+        document.getElementById('loading-text').innerText = "ERROR: gameData.js not found or corrupted!";
+        document.getElementById('loading-text').style.color = "red";
+        return;
     }
-};
+    setupMap(GAME_JSON);
+    injectUI(GAME_JSON);
+    bindUI(); 
+    fixUI();
+    setupMobileControls();
+    loadImages();
+}
 
 function resizeCanvas() {
-    if (!canvas) return;
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
     viewScale = Math.max(canvas.width / LOGICAL_WIDTH, canvas.height / LOGICAL_HEIGHT);
     camera.width = canvas.width / viewScale;
     camera.height = canvas.height / viewScale;
-    if (ctx) ctx.imageSmoothingEnabled = false;
+    ctx.imageSmoothingEnabled = false;
     const currentDPR = window.devicePixelRatio || 1;
     const uiZoom = BASE_DPR / currentDPR;
     const uiLayer = document.getElementById('game-ui-layer');
@@ -430,8 +425,7 @@ function injectUI(jsonObj) {
     }
     if (gameData.ui) extractContent(gameData.ui);
     combinedHtml = combinedHtml.replace(/{{.*?}}/g, "");
-    const uiLayer = document.getElementById('game-ui-layer');
-    if (uiLayer) uiLayer.innerHTML = combinedHtml;
+    document.getElementById('game-ui-layer').innerHTML = combinedHtml;
     const styleElement = document.createElement('style');
     styleElement.innerHTML = combinedCss;
     document.head.appendChild(styleElement);
@@ -501,64 +495,54 @@ function bindUI() {
         });
     }
 
-    const playBtn = document.getElementById('play-btn');
-    if (playBtn) {
-        playBtn.addEventListener('click', () => {
-            if (isPlaying) return;
-            isPlaying = true;
+    document.getElementById('play-btn').addEventListener('click', () => {
+        if (isPlaying) return;
+        isPlaying = true;
 
-            const nameInput = document.getElementById('player-name-input');
-            let name = nameInput?.value.trim();
-            if (nameInput && !nameInput.disabled) {
-                player.name = name ? name : "user" + Math.floor(Math.random() * 1001);
-                assignRank();
-                player.nextMoneyRewardTime = Date.now() + (Math.random() * 15000 + 15000);
-            }
-            
-            const playMenu = document.getElementById('play-menu');
-            if (playMenu) playMenu.style.display = 'none';
-            
-            const loginBtn = document.getElementById('google-login-btn');
-            if (loginBtn) loginBtn.style.display = 'none';
+        const nameInput = document.getElementById('player-name-input');
+        let name = nameInput.value.trim();
+        if (!nameInput.disabled) {
+            player.name = name ? name : "user" + Math.floor(Math.random() * 1001);
+            assignRank();
+            player.nextMoneyRewardTime = Date.now() + (Math.random() * 15000 + 15000);
+        }
+        document.getElementById('play-menu').style.display = 'none';
+        
+        const loginBtn = document.getElementById('google-login-btn');
+        if (loginBtn) loginBtn.style.display = 'none';
 
-            const uiLayer = document.getElementById('game-ui-layer');
-            if (uiLayer) uiLayer.style.display = 'block';
-            
-            const brContainer = document.getElementById('bottom-right-ui-container');
-            if (brContainer) brContainer.style.setProperty('display', 'flex', 'important');
-            
-            const blContainer = document.getElementById('bottom-left-ui-container');
-            if (blContainer) blContainer.style.setProperty('display', 'flex', 'important');
-            
-            const lbBody = document.getElementById('scoreboard');
-            const lbToggle = document.getElementById('leaderboard-toggle');
-            if (lbBody) lbBody.style.display = 'block';
-            if (lbToggle) lbToggle.style.transform = 'rotate(180deg)';
-            
-            const mobileControls = document.getElementById('mobile-controls');
-            if (mobileControls) mobileControls.style.display = 'block';
-
-            if (myId) {
-                allPlayers[myId] = player;
-                syncPlayer();
-            }
-            updateLeaderboard(); 
-        });
-    }
+        document.getElementById('game-ui-layer').style.display = 'block';
+        const brContainer = document.getElementById('bottom-right-ui-container');
+        if (brContainer) {
+            brContainer.style.setProperty('display', 'flex', 'important');
+        }
+        const blContainer = document.getElementById('bottom-left-ui-container');
+        if (blContainer) {
+            blContainer.style.setProperty('display', 'flex', 'important');
+        }
+        const lbBody = document.getElementById('scoreboard');
+        const lbToggle = document.getElementById('leaderboard-toggle');
+        if (lbBody) lbBody.style.display = 'block';
+        if (lbToggle) lbToggle.style.transform = 'rotate(180deg)';
+        
+        if (myId) {
+            allPlayers[myId] = player;
+            syncPlayer();
+        }
+        updateLeaderboard(); 
+    });
     
     const lbHeader = document.getElementById('scoreboard-header');
     if (lbHeader) {
         lbHeader.addEventListener('click', () => {
             const lbBody = document.getElementById('scoreboard');
             const lbToggle = document.getElementById('leaderboard-toggle');
-            if (lbBody && lbToggle) {
-                if (lbBody.style.display === 'none' || lbBody.style.display === '') {
-                    lbBody.style.display = 'block';
-                    lbToggle.style.transform = 'rotate(180deg)';
-                } else {
-                    lbBody.style.display = 'none';
-                    lbToggle.style.transform = 'rotate(0deg)';
-                }
+            if (lbBody.style.display === 'none' || lbBody.style.display === '') {
+                lbBody.style.display = 'block';
+                lbToggle.style.transform = 'rotate(180deg)';
+            } else {
+                lbBody.style.display = 'none';
+                lbToggle.style.transform = 'rotate(0deg)';
             }
         });
     }
@@ -662,25 +646,21 @@ function fixUI() {
         homeBtn.innerHTML = `<svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" fill="white"/></svg>`;
         homeBtn.onclick = () => {
             isPlaying = false;
-            if (uiLayer) uiLayer.style.display = 'none';
-            const playMenu = document.getElementById('play-menu');
-            if (playMenu) playMenu.style.display = 'block';
-            
-            const playBtnNode = document.getElementById('play-btn');
-            if (playBtnNode) playBtnNode.innerText = 'CONTINUE ➔';
-            
-            const pInput = document.getElementById('player-name-input');
-            if (pInput) pInput.disabled = true;
+            document.getElementById('game-ui-layer').style.display = 'none';
+            document.getElementById('play-menu').style.display = 'block';
+            document.getElementById('play-btn').innerText = 'CONTINUE ➔';
+            document.getElementById('player-name-input').disabled = true;
             
             const loginBtn = document.getElementById('google-login-btn');
             if (loginBtn) loginBtn.style.display = 'flex';
 
-            if (brContainer) brContainer.style.setProperty('display', 'none', 'important');
+            if (brContainer) {
+                brContainer.style.setProperty('display', 'none', 'important');
+            }
             const blContainer = document.getElementById('bottom-left-ui-container');
-            if (blContainer) blContainer.style.setProperty('display', 'none', 'important');
-            
-            const mobileControls = document.getElementById('mobile-controls');
-            if (mobileControls) mobileControls.style.display = 'none';
+            if (blContainer) {
+                blContainer.style.setProperty('display', 'none', 'important');
+            }
         };
         navContainer.insertBefore(homeBtn, shopNavBtn);
     }
@@ -723,8 +703,7 @@ function fixUI() {
             auth.signOut().then(() => {
                 player.email = "";
                 player.rank = "• Civilian •";
-                const glTxt = document.getElementById('google-login-text');
-                if (glTxt) glTxt.innerText = "LOGIN";
+                document.getElementById('google-login-text').innerText = "LOGIN";
                 assignRank();
                 syncPlayer();
             });
@@ -732,8 +711,7 @@ function fixUI() {
             signInWithPopup(auth, googleProvider).then((result) => {
                 const user = result.user;
                 player.email = user.email;
-                const glTxt = document.getElementById('google-login-text');
-                if (glTxt) glTxt.innerText = "LOG OUT";
+                document.getElementById('google-login-text').innerText = "LOG OUT";
                 assignRank();
                 syncPlayer();
             }).catch(error => {
@@ -743,16 +721,14 @@ function fixUI() {
     };
     
     if (player.email) {
-        const glTxt = document.getElementById('google-login-text');
-        if (glTxt) glTxt.innerText = "LOG OUT";
+        document.getElementById('google-login-text').innerText = "LOG OUT";
     }
 
-    (document.body || document.documentElement).appendChild(googleBtn);
+    document.body.appendChild(googleBtn);
 
     const leftSidebar = document.createElement('div');
     leftSidebar.style.cssText = "position: fixed !important; left: 20px !important; top: 50% !important; transform: translateY(-50%) !important; display: flex !important; flex-direction: column !important; gap: 12px !important; z-index: 9999 !important; pointer-events: none !important;";
     if (uiLayer) uiLayer.appendChild(leftSidebar);
-    
     const leftButtons = ['open-shop-menu', 'open-settings-menu', 'open-note-menu', 'open-teams-menu', 'open-management-menu'];
     leftButtons.forEach(id => {
         const btn = document.getElementById(id);
@@ -766,7 +742,6 @@ function fixUI() {
             }
         }
     });
-    
     ['music', 'tooltips'].forEach(setting => {
         const btnEnabled = document.getElementById(`${setting}-enabled`);
         const btnDisabled = document.getElementById(`${setting}-disabled`);
@@ -783,7 +758,6 @@ function fixUI() {
             });
         }
     });
-    
     const bottomCenterContainer = document.createElement('div');
     bottomCenterContainer.id = 'bottom-center-ui-container';
     const topButtonsRow = document.createElement('div');
@@ -805,17 +779,15 @@ function fixUI() {
     topButtonsRow.appendChild(atEaseBtn);
     const invSlotsRow = document.createElement('div');
     invSlotsRow.className = 'inv-slots-row';
-    
     window.selectSlot = function(index) {
-        for(let i = 1; i <= 5; i++) {
+        for(let i=1; i<=5; i++) {
             const s = document.getElementById('inv-slot-' + i);
-            if (s) {
+            if(s) {
                 if(i === index) s.classList.add('selected');
                 else s.classList.remove('selected');
             }
         }
     };
-    
     for (let i = 1; i <= 5; i++) {
         const slot = document.createElement('div');
         slot.id = 'inv-slot-' + i;
@@ -824,22 +796,18 @@ function fixUI() {
         slot.onclick = () => window.selectSlot(i);
         invSlotsRow.appendChild(slot);
     }
-    
     bottomCenterContainer.appendChild(topButtonsRow);
     bottomCenterContainer.appendChild(invSlotsRow);
     if (uiLayer) uiLayer.appendChild(bottomCenterContainer);
-    
     window.addEventListener('keydown', (e) => {
-        if (document.activeElement !== document.getElementById('chat-input') && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
+        if (document.activeElement !== document.getElementById('chat-input') && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
             if (e.key >= '1' && e.key <= '5') {
                 window.selectSlot(parseInt(e.key));
             }
         }
     });
-    
     const noteTextArea = document.getElementById('note-textarea');
     if (noteTextArea) noteTextArea.classList.remove('trigger');
-    
     ['navbar-subscription-button', 'navbar-moderate-button', 'navbar-chat-button', 'navbar-leaderboard-button', 'open-moderation', 'navbar-setting-button'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.remove();
@@ -850,36 +818,28 @@ function setupMobileControls() {
     if (!isMobile) return;
     const mobileUI = document.createElement('div');
     mobileUI.id = 'mobile-controls';
-    mobileUI.style.cssText = 'position:fixed; top:0; left:0; width:100vw; height:100vh; z-index:100000; pointer-events:none; display:none;';
+    mobileUI.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; z-index:100000; pointer-events:none;';
     
-    const joySize = 'min(22vw, 130px)';
-    const stickSize = 'min(11vw, 65px)';
-    const btnSize = 'min(18vw, 75px)';
-
     mobileUI.innerHTML = `
-        <div id="left-joystick" style="position:absolute; bottom:30px; left:30px; width:${joySize}; height:${joySize}; background:rgba(0,0,0,0.6); border:2px solid #111; border-radius:50%; pointer-events:auto; touch-action:none; display:flex; align-items:center; justify-content:center; box-shadow:0 0 15px rgba(0,0,0,0.5);">
-            <div id="left-stick" style="width:${stickSize}; height:${stickSize}; background:radial-gradient(circle, #e67e22 0%, #b8651b 100%); border-radius:50%; box-shadow:0 0 10px rgba(0,0,0,0.8); transition:transform 0.05s ease-out;"></div>
+        <div id="left-joystick" style="position:absolute; bottom:8vmin; left:8vmin; width:25vmin; height:25vmin; background:rgba(0,0,0,0.6); border:3px solid #e67e22; border-radius:50%; pointer-events:auto; touch-action:none;">
+            <div id="left-stick" style="position:absolute; top:50%; left:50%; width:10vmin; height:10vmin; background:#e67e22; border-radius:50%; transform:translate(-50%, -50%); box-shadow:0 0 10px rgba(0,0,0,0.8);"></div>
         </div>
-        <div id="right-joystick" style="position:absolute; bottom:30px; right:30px; width:${joySize}; height:${joySize}; background:rgba(0,0,0,0.6); border:2px solid #111; border-radius:50%; pointer-events:auto; touch-action:none; display:flex; align-items:center; justify-content:center; box-shadow:0 0 15px rgba(0,0,0,0.5);">
-            <div id="right-stick" style="width:${stickSize}; height:${stickSize}; background:radial-gradient(circle, #e67e22 0%, #b8651b 100%); border-radius:50%; box-shadow:0 0 10px rgba(0,0,0,0.8); transition:transform 0.05s ease-out;"></div>
+        <div id="right-joystick" style="position:absolute; bottom:8vmin; right:35vmin; width:25vmin; height:25vmin; background:rgba(0,0,0,0.6); border:3px solid #e67e22; border-radius:50%; pointer-events:auto; touch-action:none;">
+            <div id="right-stick" style="position:absolute; top:50%; left:50%; width:10vmin; height:10vmin; background:#e67e22; border-radius:50%; transform:translate(-50%, -50%); box-shadow:0 0 10px rgba(0,0,0,0.8);"></div>
         </div>
-        <button id="mobile-attack-btn" style="position:absolute; bottom:30px; right:calc(30px + ${joySize} + 20px); width:${btnSize}; height:${btnSize}; background:rgba(0,0,0,0.6); border:3px solid #e67e22; border-radius:50%; pointer-events:auto; touch-action:none; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 15px rgba(0,0,0,0.5);">
-            <svg viewBox="0 0 24 24" width="60%" height="60%" fill="#e67e22"><circle cx="12" cy="12" r="8"></circle></svg>
+        <button id="mobile-attack-btn" style="position:absolute; bottom:13vmin; right:8vmin; width:15vmin; height:15vmin; background:rgba(0,0,0,0.6); border:3px solid #e67e22; border-radius:50%; pointer-events:auto; touch-action:none; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 15px rgba(0,0,0,0.5);">
+            <svg viewBox="0 0 24 24" width="8vmin" height="8vmin" fill="#e67e22"><circle cx="12" cy="12" r="8"></circle></svg>
         </button>
-        <button id="mobile-chat-btn" style="position:absolute; top:20px; right:120px; width:44px; height:44px; background:#111111; border:none; border-bottom:3px solid #e67e22; border-radius:6px; pointer-events:auto; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 15px rgba(0,0,0,0.5);">
+        <button id="mobile-chat-btn" style="position:absolute; top:20px; right:150px; width:44px; height:44px; background:#111111; border:none; border-bottom:3px solid #e67e22; border-radius:6px; pointer-events:auto; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 15px rgba(0,0,0,0.5);">
             <svg viewBox="0 0 24 24" width="20" height="20" fill="white"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
         </button>
     `;
-    
-    (document.body || document.documentElement).appendChild(mobileUI);
+    document.body.appendChild(mobileUI);
 
     function bindJoy(baseId, stickId, joyObj) {
         const base = document.getElementById(baseId);
         const stick = document.getElementById(stickId);
-        let activeTouchId = null;
         
-        if (!base || !stick) return;
-
         function moveStick(e) {
             e.preventDefault();
             let rect = base.getBoundingClientRect();
@@ -887,24 +847,11 @@ function setupMobileControls() {
             let cy = rect.top + rect.height / 2;
             let r = rect.width / 2;
             
-            if (activeTouchId === null && e.type === 'touchstart') {
-                for (let i = 0; i < e.changedTouches.length; i++) {
-                    let t = e.changedTouches[i];
-                    if (t.clientX >= rect.left && t.clientX <= rect.right && t.clientY >= rect.top && t.clientY <= rect.bottom) {
-                        activeTouchId = t.identifier;
-                        break;
-                    }
-                }
-            }
-            if (activeTouchId === null) return;
+            let touch = Array.from(e.touches).find(t => {
+                let br = base.getBoundingClientRect();
+                return t.clientX >= br.left && t.clientX <= br.right && t.clientY >= br.top && t.clientY <= br.bottom;
+            }) || e.changedTouches[0];
             
-            let touch;
-            for (let i = 0; i < e.touches.length; i++) {
-                if (e.touches[i].identifier === activeTouchId) {
-                    touch = e.touches[i];
-                    break;
-                }
-            }
             if (!touch) return;
             
             let dx = touch.clientX - cx;
@@ -916,7 +863,7 @@ function setupMobileControls() {
                 dy = (dy / dist) * r;
             }
             
-            stick.style.transform = `translate(calc(${dx}px), calc(${dy}px))`;
+            stick.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
             joyObj.x = dx / r;
             joyObj.y = dy / r;
             joyObj.active = true;
@@ -924,17 +871,7 @@ function setupMobileControls() {
         
         function resetStick(e) {
             e.preventDefault();
-            let ended = false;
-            for (let i = 0; i < e.changedTouches.length; i++) {
-                if (e.changedTouches[i].identifier === activeTouchId) {
-                    ended = true;
-                    break;
-                }
-            }
-            if (!ended && e.type !== 'touchcancel') return;
-            
-            activeTouchId = null;
-            stick.style.transform = `translate(0, 0)`;
+            stick.style.transform = `translate(-50%, -50%)`;
             joyObj.x = 0;
             joyObj.y = 0;
             joyObj.active = false;
@@ -950,46 +887,27 @@ function setupMobileControls() {
     bindJoy('right-joystick', 'right-stick', rightJoy);
     
     const atkBtn = document.getElementById('mobile-attack-btn');
-    if (atkBtn) {
-        atkBtn.addEventListener('touchstart', (e) => { 
-            e.preventDefault(); 
-            isAttacking = true; 
-            atkBtn.style.background = "rgba(230,126,34,0.4)"; 
-            syncPlayer();
-        }, {passive: false});
-        
-        const releaseAtk = (e) => { 
-            e.preventDefault(); 
-            isAttacking = false; 
-            atkBtn.style.background = "rgba(0,0,0,0.6)"; 
-            syncPlayer();
-        };
-        
-        atkBtn.addEventListener('touchend', releaseAtk, {passive: false});
-        atkBtn.addEventListener('touchcancel', releaseAtk, {passive: false});
-    }
+    atkBtn.addEventListener('touchstart', (e) => { e.preventDefault(); isAttacking = true; atkBtn.style.background = "rgba(230,126,34,0.5)"; });
+    atkBtn.addEventListener('touchend', (e) => { e.preventDefault(); isAttacking = false; atkBtn.style.background = "rgba(0,0,0,0.6)"; });
+    atkBtn.addEventListener('touchcancel', (e) => { e.preventDefault(); isAttacking = false; atkBtn.style.background = "rgba(0,0,0,0.6)"; });
     
-    const mobChatBtn = document.getElementById('mobile-chat-btn');
-    if (mobChatBtn) {
-        mobChatBtn.addEventListener('click', () => {
-            const chatContainer = document.getElementById('chat-input-container');
-            const chatInput = document.getElementById('chat-input');
-            if (chatContainer && chatInput) {
-                chatContainer.style.display = 'block';
-                chatInput.value = '';
-                setTimeout(() => chatInput.focus(), 10);
-            }
-        });
-    }
+    document.getElementById('mobile-chat-btn').addEventListener('click', () => {
+        const chatContainer = document.getElementById('chat-input-container');
+        const chatInput = document.getElementById('chat-input');
+        if (chatContainer) {
+            chatContainer.style.display = 'block';
+            chatInput.value = '';
+            setTimeout(() => chatInput.focus(), 10);
+        }
+    });
 }
 
 function setupMap(jsonObj) {
     const gameData = jsonObj.data || jsonObj;
     const m = gameData.map;
-    if (!m) return;
-    columns = m.width || 0;
-    rows = m.height || 0;
-    layers = m.layers || [];
+    columns = m.width;
+    rows = m.height;
+    layers = m.layers;
     try {
         const spawnRegion = gameData.variables["civilian spawn"].default;
         if (spawnRegion) {
@@ -1006,57 +924,41 @@ function setupMap(jsonObj) {
 }
 
 function loadImages() {
-    let forceBootTimeout = setTimeout(() => {
-        if (assetsLoaded < 2) {
-            console.warn("Images took too long to load, bypassing lock...");
-            assetsLoaded = 2;
-            bootEngine();
-        }
-    }, 5000);
-
-    const onAssetError = (e) => {
-        console.warn("Asset failed to load, bypassing to prevent lock.");
-        onAssetLoad();
-    };
-
     tilesheetImg.crossOrigin = "Anonymous";
     tilesheetImg.onload = onAssetLoad;
-    tilesheetImg.onerror = onAssetError;
+    tilesheetImg.onerror = () => {
+        document.getElementById('loading-text').innerText = "ERROR: Could not load tilesheet from Cache!";
+        document.getElementById('loading-text').style.color = "red";
+    };
     tilesheetImg.src = "assets/tilesheet.png";
-    
     playerImg.crossOrigin = "Anonymous";
     playerImg.onload = onAssetLoad;
-    playerImg.onerror = onAssetError;
+    playerImg.onerror = () => {
+        document.getElementById('loading-text').innerText = "ERROR: Could not load player sprite!";
+        document.getElementById('loading-text').style.color = "red";
+    };
     playerImg.src = "assets/player.png";
+}
 
-    function onAssetLoad() {
-        assetsLoaded++;
-        if (assetsLoaded >= 2) {
-            clearTimeout(forceBootTimeout);
-            bootEngine();
-        }
+function onAssetLoad() {
+    assetsLoaded++;
+    if (assetsLoaded === 2) {
+        document.getElementById('loading-text').innerText = "LOADING...";
+        requestAnimationFrame(() => {
+            setTimeout(() => {
+                preRenderMap(); 
+                document.querySelectorAll('#loading-screen, .engine-loading-screen').forEach(el => el.remove());
+                canvas.style.display = 'block';
+                document.getElementById('play-menu').style.display = 'block';
+                resizeCanvas();
+                lastTime = performance.now();
+                requestAnimationFrame(gameLoop);
+            }, 50);
+        });
     }
 }
 
-function bootEngine() {
-    const ldText = document.getElementById('loading-text');
-    if (ldText) ldText.innerText = "LOADING...";
-    requestAnimationFrame(() => {
-        setTimeout(() => {
-            preRenderMap(); 
-            document.querySelectorAll('#loading-screen, .engine-loading-screen').forEach(el => el.remove());
-            if (canvas) canvas.style.display = 'block';
-            const pm = document.getElementById('play-menu');
-            if (pm) pm.style.display = 'block';
-            resizeCanvas();
-            lastTime = performance.now();
-            requestAnimationFrame(gameLoop);
-        }, 50);
-    });
-}
-
 function preRenderMap() {
-    if (!columns || !rows) return;
     const numChunksX = Math.ceil((columns * TILE_SIZE) / CHUNK_SIZE);
     const numChunksY = Math.ceil((rows * TILE_SIZE) / CHUNK_SIZE);
     for (let cy = 0; cy < numChunksY; cy++) {
@@ -1067,24 +969,19 @@ function preRenderMap() {
             bgCanvas.width = CHUNK_SIZE;
             bgCanvas.height = CHUNK_SIZE;
             const bgCtx = bgCanvas.getContext('2d', { alpha: true });
-            if (bgCtx) bgCtx.imageSmoothingEnabled = false;
-            
+            bgCtx.imageSmoothingEnabled = false;
             const fgCanvas = document.createElement('canvas');
             fgCanvas.width = CHUNK_SIZE;
             fgCanvas.height = CHUNK_SIZE;
             const fgCtx = fgCanvas.getContext('2d', { alpha: true });
-            if (fgCtx) fgCtx.imageSmoothingEnabled = false;
-            
+            fgCtx.imageSmoothingEnabled = false;
             layers.forEach(layer => {
                 if (layer.type !== "tilelayer" || !layer.visible) return;
                 const targetCtx = layer.name === "trees" ? fgCtx : bgCtx;
-                if (!targetCtx) return;
-                
                 const startCol = Math.floor((cx * CHUNK_SIZE) / TILE_SIZE);
                 const endCol = Math.ceil(((cx + 1) * CHUNK_SIZE) / TILE_SIZE);
                 const startRow = Math.floor((cy * CHUNK_SIZE) / TILE_SIZE);
                 const endRow = Math.ceil(((cy + 1) * CHUNK_SIZE) / TILE_SIZE);
-                
                 for (let r = Math.max(0, startRow); r < Math.min(rows, endRow); r++) {
                     for (let c = Math.max(0, startCol); c < Math.min(columns, endCol); c++) {
                         const tileIndex = r * columns + c;
@@ -1257,6 +1154,8 @@ function update(dt) {
     if (isMobile) {
         if (rightJoy.active) {
             player.angle = Math.atan2(rightJoy.y, rightJoy.x) + (Math.PI / 2);
+        } else if (leftJoy.active) {
+            player.angle = Math.atan2(leftJoy.y, leftJoy.x) + (Math.PI / 2);
         }
     } else {
         const scaledMouseX = mouseX / viewScale;
@@ -1294,26 +1193,21 @@ setInterval(() => {
 }, 100);
 
 function render() {
-    if (!ctx) return;
     ctx.fillStyle = "#000000";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.save();
     ctx.scale(viewScale, viewScale);
 
-    if (bgChunks.length > 0) {
-        const startCX = Math.max(0, Math.floor(camera.x / CHUNK_SIZE));
-        const endCX = Math.min(bgChunks[0].length - 1, Math.floor((camera.x + camera.width) / CHUNK_SIZE));
-        const startCY = Math.max(0, Math.floor(camera.y / CHUNK_SIZE));
-        const endCY = Math.min(bgChunks.length - 1, Math.floor((camera.y + camera.height) / CHUNK_SIZE));
+    const startCX = Math.max(0, Math.floor(camera.x / CHUNK_SIZE));
+    const endCX = Math.min(bgChunks[0].length - 1, Math.floor((camera.x + camera.width) / CHUNK_SIZE));
+    const startCY = Math.max(0, Math.floor(camera.y / CHUNK_SIZE));
+    const endCY = Math.min(bgChunks.length - 1, Math.floor((camera.y + camera.height) / CHUNK_SIZE));
 
-        for (let cy = startCY; cy <= endCY; cy++) {
-            for (let cx = startCX; cx <= endCX; cx++) {
-                if (bgChunks[cy] && bgChunks[cy][cx]) {
-                    const destX = Math.floor(cx * CHUNK_SIZE - camera.x);
-                    const destY = Math.floor(cy * CHUNK_SIZE - camera.y);
-                    ctx.drawImage(bgChunks[cy][cx], destX, destY);
-                }
-            }
+    for (let cy = startCY; cy <= endCY; cy++) {
+        for (let cx = startCX; cx <= endCX; cx++) {
+            const destX = Math.floor(cx * CHUNK_SIZE - camera.x);
+            const destY = Math.floor(cy * CHUNK_SIZE - camera.y);
+            ctx.drawImage(bgChunks[cy][cx], destX, destY);
         }
     }
 
@@ -1355,20 +1249,11 @@ function render() {
         }
     }
 
-    if (fgChunks.length > 0) {
-        const startCX = Math.max(0, Math.floor(camera.x / CHUNK_SIZE));
-        const endCX = Math.min(fgChunks[0].length - 1, Math.floor((camera.x + camera.width) / CHUNK_SIZE));
-        const startCY = Math.max(0, Math.floor(camera.y / CHUNK_SIZE));
-        const endCY = Math.min(fgChunks.length - 1, Math.floor((camera.y + camera.height) / CHUNK_SIZE));
-
-        for (let cy = startCY; cy <= endCY; cy++) {
-            for (let cx = startCX; cx <= endCX; cx++) {
-                if (fgChunks[cy] && fgChunks[cy][cx]) {
-                    const destX = Math.floor(cx * CHUNK_SIZE - camera.x);
-                    const destY = Math.floor(cy * CHUNK_SIZE - camera.y);
-                    ctx.drawImage(fgChunks[cy][cx], destX, destY);
-                }
-            }
+    for (let cy = startCY; cy <= endCY; cy++) {
+        for (let cx = startCX; cx <= endCX; cx++) {
+            const destX = Math.floor(cx * CHUNK_SIZE - camera.x);
+            const destY = Math.floor(cy * CHUNK_SIZE - camera.y);
+            ctx.drawImage(fgChunks[cy][cx], destX, destY);
         }
     }
 
