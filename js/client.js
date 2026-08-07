@@ -86,7 +86,7 @@ function assignRank() {
 function spawnPlayer(regionName) {
     if (typeof GAME_JSON === 'undefined') return;
     const gameData = GAME_JSON.data || GAME_JSON;
-    if (gameData.variables && gameData.variables[regionName] && gameData.variables[regionName].default) {
+    if (gameData?.variables && gameData.variables[regionName] && gameData.variables[regionName].default) {
         const spawnRegion = gameData.variables[regionName].default;
         player.x = spawnRegion.x + (Math.random() * spawnRegion.width) - (player.width / 2);
         player.y = spawnRegion.y + (Math.random() * spawnRegion.height) - (player.height / 2);
@@ -272,7 +272,7 @@ window.addEventListener('wheel', preventZoom, { passive: false });
 window.addEventListener('keydown', preventZoom, { passive: false });
 
 const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d', { alpha: false });
+const ctx = canvas?.getContext('2d', { alpha: false });
 
 const TILESHEET_URL = "assets/tilesheet.png";
 const PLAYER_URL = "assets/player.png";
@@ -322,6 +322,8 @@ window.addEventListener('keydown', e => {
 
         const chatContainer = document.getElementById('chat-input-container');
         const chatInput = document.getElementById('chat-input');
+        if (!chatContainer || !chatInput) return;
+        
         if (chatContainer.style.display !== 'block') {
             chatContainer.style.display = 'block';
             chatInput.value = '';
@@ -349,11 +351,11 @@ window.addEventListener('keydown', e => {
             }
             chatContainer.style.display = 'none';
             chatInput.blur();
-            canvas.focus();
+            if (canvas) canvas.focus();
         }
         return;
     }
-    if (document.activeElement !== document.getElementById('chat-input') && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
+    if (document.activeElement !== document.getElementById('chat-input') && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
         if (e.key.toLowerCase() === 'b') {
             const shopMenu = document.getElementById('shop-ui');
             if (shopMenu) shopMenu.style.display = shopMenu.style.display === 'flex' ? 'none' : 'flex';
@@ -368,27 +370,40 @@ window.addEventListener('keyup', e => {
 
 window.addEventListener('mousemove', e => { mouseX = e.clientX; mouseY = e.clientY; });
 
-function initGame() {
-    if (typeof GAME_JSON === 'undefined') {
-        document.getElementById('loading-text').innerText = "ERROR: gameData.js not found or corrupted!";
-        document.getElementById('loading-text').style.color = "red";
-        return;
+window.initGame = function initGame() {
+    try {
+        if (typeof GAME_JSON === 'undefined') {
+            const loadText = document.getElementById('loading-text');
+            if (loadText) {
+                loadText.innerText = "ERROR: gameData.js not found or corrupted!";
+                loadText.style.color = "red";
+            }
+            return;
+        }
+        setupMap(GAME_JSON);
+        injectUI(GAME_JSON);
+        bindUI(); 
+        fixUI();
+        setupMobileControls();
+        loadImages();
+    } catch (e) {
+        console.error("Critical Engine Boot Error:", e);
+        const loadText = document.getElementById('loading-text');
+        if (loadText) {
+            loadText.innerText = "BOOT ERROR: Check console for details.";
+            loadText.style.color = "red";
+        }
     }
-    setupMap(GAME_JSON);
-    injectUI(GAME_JSON);
-    bindUI(); 
-    fixUI();
-    setupMobileControls();
-    loadImages();
-}
+};
 
 function resizeCanvas() {
+    if (!canvas) return;
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
     viewScale = Math.max(canvas.width / LOGICAL_WIDTH, canvas.height / LOGICAL_HEIGHT);
     camera.width = canvas.width / viewScale;
     camera.height = canvas.height / viewScale;
-    ctx.imageSmoothingEnabled = false;
+    if (ctx) ctx.imageSmoothingEnabled = false;
     const currentDPR = window.devicePixelRatio || 1;
     const uiZoom = BASE_DPR / currentDPR;
     const uiLayer = document.getElementById('game-ui-layer');
@@ -415,7 +430,8 @@ function injectUI(jsonObj) {
     }
     if (gameData.ui) extractContent(gameData.ui);
     combinedHtml = combinedHtml.replace(/{{.*?}}/g, "");
-    document.getElementById('game-ui-layer').innerHTML = combinedHtml;
+    const uiLayer = document.getElementById('game-ui-layer');
+    if (uiLayer) uiLayer.innerHTML = combinedHtml;
     const styleElement = document.createElement('style');
     styleElement.innerHTML = combinedCss;
     document.head.appendChild(styleElement);
@@ -485,57 +501,64 @@ function bindUI() {
         });
     }
 
-    document.getElementById('play-btn').addEventListener('click', () => {
-        if (isPlaying) return;
-        isPlaying = true;
+    const playBtn = document.getElementById('play-btn');
+    if (playBtn) {
+        playBtn.addEventListener('click', () => {
+            if (isPlaying) return;
+            isPlaying = true;
 
-        const nameInput = document.getElementById('player-name-input');
-        let name = nameInput.value.trim();
-        if (!nameInput.disabled) {
-            player.name = name ? name : "user" + Math.floor(Math.random() * 1001);
-            assignRank();
-            player.nextMoneyRewardTime = Date.now() + (Math.random() * 15000 + 15000);
-        }
-        document.getElementById('play-menu').style.display = 'none';
-        
-        const loginBtn = document.getElementById('google-login-btn');
-        if (loginBtn) loginBtn.style.display = 'none';
+            const nameInput = document.getElementById('player-name-input');
+            let name = nameInput?.value.trim();
+            if (nameInput && !nameInput.disabled) {
+                player.name = name ? name : "user" + Math.floor(Math.random() * 1001);
+                assignRank();
+                player.nextMoneyRewardTime = Date.now() + (Math.random() * 15000 + 15000);
+            }
+            
+            const playMenu = document.getElementById('play-menu');
+            if (playMenu) playMenu.style.display = 'none';
+            
+            const loginBtn = document.getElementById('google-login-btn');
+            if (loginBtn) loginBtn.style.display = 'none';
 
-        document.getElementById('game-ui-layer').style.display = 'block';
-        const brContainer = document.getElementById('bottom-right-ui-container');
-        if (brContainer) {
-            brContainer.style.setProperty('display', 'flex', 'important');
-        }
-        const blContainer = document.getElementById('bottom-left-ui-container');
-        if (blContainer) {
-            blContainer.style.setProperty('display', 'flex', 'important');
-        }
-        const lbBody = document.getElementById('scoreboard');
-        const lbToggle = document.getElementById('leaderboard-toggle');
-        if (lbBody) lbBody.style.display = 'block';
-        if (lbToggle) lbToggle.style.transform = 'rotate(180deg)';
-        
-        const mobileControls = document.getElementById('mobile-controls');
-        if (mobileControls) mobileControls.style.display = 'block';
+            const uiLayer = document.getElementById('game-ui-layer');
+            if (uiLayer) uiLayer.style.display = 'block';
+            
+            const brContainer = document.getElementById('bottom-right-ui-container');
+            if (brContainer) brContainer.style.setProperty('display', 'flex', 'important');
+            
+            const blContainer = document.getElementById('bottom-left-ui-container');
+            if (blContainer) blContainer.style.setProperty('display', 'flex', 'important');
+            
+            const lbBody = document.getElementById('scoreboard');
+            const lbToggle = document.getElementById('leaderboard-toggle');
+            if (lbBody) lbBody.style.display = 'block';
+            if (lbToggle) lbToggle.style.transform = 'rotate(180deg)';
+            
+            const mobileControls = document.getElementById('mobile-controls');
+            if (mobileControls) mobileControls.style.display = 'block';
 
-        if (myId) {
-            allPlayers[myId] = player;
-            syncPlayer();
-        }
-        updateLeaderboard(); 
-    });
+            if (myId) {
+                allPlayers[myId] = player;
+                syncPlayer();
+            }
+            updateLeaderboard(); 
+        });
+    }
     
     const lbHeader = document.getElementById('scoreboard-header');
     if (lbHeader) {
         lbHeader.addEventListener('click', () => {
             const lbBody = document.getElementById('scoreboard');
             const lbToggle = document.getElementById('leaderboard-toggle');
-            if (lbBody.style.display === 'none' || lbBody.style.display === '') {
-                lbBody.style.display = 'block';
-                lbToggle.style.transform = 'rotate(180deg)';
-            } else {
-                lbBody.style.display = 'none';
-                lbToggle.style.transform = 'rotate(0deg)';
+            if (lbBody && lbToggle) {
+                if (lbBody.style.display === 'none' || lbBody.style.display === '') {
+                    lbBody.style.display = 'block';
+                    lbToggle.style.transform = 'rotate(180deg)';
+                } else {
+                    lbBody.style.display = 'none';
+                    lbToggle.style.transform = 'rotate(0deg)';
+                }
             }
         });
     }
@@ -639,21 +662,23 @@ function fixUI() {
         homeBtn.innerHTML = `<svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" fill="white"/></svg>`;
         homeBtn.onclick = () => {
             isPlaying = false;
-            document.getElementById('game-ui-layer').style.display = 'none';
-            document.getElementById('play-menu').style.display = 'block';
-            document.getElementById('play-btn').innerText = 'CONTINUE ➔';
-            document.getElementById('player-name-input').disabled = true;
+            if (uiLayer) uiLayer.style.display = 'none';
+            const playMenu = document.getElementById('play-menu');
+            if (playMenu) playMenu.style.display = 'block';
+            
+            const playBtnNode = document.getElementById('play-btn');
+            if (playBtnNode) playBtnNode.innerText = 'CONTINUE ➔';
+            
+            const pInput = document.getElementById('player-name-input');
+            if (pInput) pInput.disabled = true;
             
             const loginBtn = document.getElementById('google-login-btn');
             if (loginBtn) loginBtn.style.display = 'flex';
 
-            if (brContainer) {
-                brContainer.style.setProperty('display', 'none', 'important');
-            }
+            if (brContainer) brContainer.style.setProperty('display', 'none', 'important');
             const blContainer = document.getElementById('bottom-left-ui-container');
-            if (blContainer) {
-                blContainer.style.setProperty('display', 'none', 'important');
-            }
+            if (blContainer) blContainer.style.setProperty('display', 'none', 'important');
+            
             const mobileControls = document.getElementById('mobile-controls');
             if (mobileControls) mobileControls.style.display = 'none';
         };
@@ -698,7 +723,8 @@ function fixUI() {
             auth.signOut().then(() => {
                 player.email = "";
                 player.rank = "• Civilian •";
-                document.getElementById('google-login-text').innerText = "LOGIN";
+                const glTxt = document.getElementById('google-login-text');
+                if (glTxt) glTxt.innerText = "LOGIN";
                 assignRank();
                 syncPlayer();
             });
@@ -706,7 +732,8 @@ function fixUI() {
             signInWithPopup(auth, googleProvider).then((result) => {
                 const user = result.user;
                 player.email = user.email;
-                document.getElementById('google-login-text').innerText = "LOG OUT";
+                const glTxt = document.getElementById('google-login-text');
+                if (glTxt) glTxt.innerText = "LOG OUT";
                 assignRank();
                 syncPlayer();
             }).catch(error => {
@@ -716,14 +743,16 @@ function fixUI() {
     };
     
     if (player.email) {
-        document.getElementById('google-login-text').innerText = "LOG OUT";
+        const glTxt = document.getElementById('google-login-text');
+        if (glTxt) glTxt.innerText = "LOG OUT";
     }
 
-    document.body.appendChild(googleBtn);
+    (document.body || document.documentElement).appendChild(googleBtn);
 
     const leftSidebar = document.createElement('div');
     leftSidebar.style.cssText = "position: fixed !important; left: 20px !important; top: 50% !important; transform: translateY(-50%) !important; display: flex !important; flex-direction: column !important; gap: 12px !important; z-index: 9999 !important; pointer-events: none !important;";
     if (uiLayer) uiLayer.appendChild(leftSidebar);
+    
     const leftButtons = ['open-shop-menu', 'open-settings-menu', 'open-note-menu', 'open-teams-menu', 'open-management-menu'];
     leftButtons.forEach(id => {
         const btn = document.getElementById(id);
@@ -737,6 +766,7 @@ function fixUI() {
             }
         }
     });
+    
     ['music', 'tooltips'].forEach(setting => {
         const btnEnabled = document.getElementById(`${setting}-enabled`);
         const btnDisabled = document.getElementById(`${setting}-disabled`);
@@ -753,6 +783,7 @@ function fixUI() {
             });
         }
     });
+    
     const bottomCenterContainer = document.createElement('div');
     bottomCenterContainer.id = 'bottom-center-ui-container';
     const topButtonsRow = document.createElement('div');
@@ -774,15 +805,17 @@ function fixUI() {
     topButtonsRow.appendChild(atEaseBtn);
     const invSlotsRow = document.createElement('div');
     invSlotsRow.className = 'inv-slots-row';
+    
     window.selectSlot = function(index) {
-        for(let i=1; i<=5; i++) {
+        for(let i = 1; i <= 5; i++) {
             const s = document.getElementById('inv-slot-' + i);
-            if(s) {
+            if (s) {
                 if(i === index) s.classList.add('selected');
                 else s.classList.remove('selected');
             }
         }
     };
+    
     for (let i = 1; i <= 5; i++) {
         const slot = document.createElement('div');
         slot.id = 'inv-slot-' + i;
@@ -791,18 +824,22 @@ function fixUI() {
         slot.onclick = () => window.selectSlot(i);
         invSlotsRow.appendChild(slot);
     }
+    
     bottomCenterContainer.appendChild(topButtonsRow);
     bottomCenterContainer.appendChild(invSlotsRow);
     if (uiLayer) uiLayer.appendChild(bottomCenterContainer);
+    
     window.addEventListener('keydown', (e) => {
-        if (document.activeElement !== document.getElementById('chat-input') && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
+        if (document.activeElement !== document.getElementById('chat-input') && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
             if (e.key >= '1' && e.key <= '5') {
                 window.selectSlot(parseInt(e.key));
             }
         }
     });
+    
     const noteTextArea = document.getElementById('note-textarea');
     if (noteTextArea) noteTextArea.classList.remove('trigger');
+    
     ['navbar-subscription-button', 'navbar-moderate-button', 'navbar-chat-button', 'navbar-leaderboard-button', 'open-moderation', 'navbar-setting-button'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.remove();
@@ -833,13 +870,16 @@ function setupMobileControls() {
             <svg viewBox="0 0 24 24" width="20" height="20" fill="white"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
         </button>
     `;
-    document.body.appendChild(mobileUI);
+    
+    (document.body || document.documentElement).appendChild(mobileUI);
 
     function bindJoy(baseId, stickId, joyObj) {
         const base = document.getElementById(baseId);
         const stick = document.getElementById(stickId);
         let activeTouchId = null;
         
+        if (!base || !stick) return;
+
         function moveStick(e) {
             e.preventDefault();
             let rect = base.getBoundingClientRect();
@@ -910,40 +950,46 @@ function setupMobileControls() {
     bindJoy('right-joystick', 'right-stick', rightJoy);
     
     const atkBtn = document.getElementById('mobile-attack-btn');
-    atkBtn.addEventListener('touchstart', (e) => { 
-        e.preventDefault(); 
-        isAttacking = true; 
-        atkBtn.style.background = "rgba(230,126,34,0.4)"; 
-        syncPlayer();
-    });
+    if (atkBtn) {
+        atkBtn.addEventListener('touchstart', (e) => { 
+            e.preventDefault(); 
+            isAttacking = true; 
+            atkBtn.style.background = "rgba(230,126,34,0.4)"; 
+            syncPlayer();
+        }, {passive: false});
+        
+        const releaseAtk = (e) => { 
+            e.preventDefault(); 
+            isAttacking = false; 
+            atkBtn.style.background = "rgba(0,0,0,0.6)"; 
+            syncPlayer();
+        };
+        
+        atkBtn.addEventListener('touchend', releaseAtk, {passive: false});
+        atkBtn.addEventListener('touchcancel', releaseAtk, {passive: false});
+    }
     
-    const releaseAtk = (e) => { 
-        e.preventDefault(); 
-        isAttacking = false; 
-        atkBtn.style.background = "rgba(0,0,0,0.6)"; 
-        syncPlayer();
-    };
-    
-    atkBtn.addEventListener('touchend', releaseAtk);
-    atkBtn.addEventListener('touchcancel', releaseAtk);
-    
-    document.getElementById('mobile-chat-btn').addEventListener('click', () => {
-        const chatContainer = document.getElementById('chat-input-container');
-        const chatInput = document.getElementById('chat-input');
-        if (chatContainer) {
-            chatContainer.style.display = 'block';
-            chatInput.value = '';
-            setTimeout(() => chatInput.focus(), 10);
-        }
-    });
+    const mobChatBtn = document.getElementById('mobile-chat-btn');
+    if (mobChatBtn) {
+        mobChatBtn.addEventListener('click', () => {
+            const chatContainer = document.getElementById('chat-input-container');
+            const chatInput = document.getElementById('chat-input');
+            if (chatContainer && chatInput) {
+                chatContainer.style.display = 'block';
+                chatInput.value = '';
+                setTimeout(() => chatInput.focus(), 10);
+            }
+        });
+    }
 }
 
 function setupMap(jsonObj) {
     const gameData = jsonObj.data || jsonObj;
     const m = gameData.map;
-    columns = m.width;
-    rows = m.height;
-    layers = m.layers;
+    if (!m) return;
+    columns = m.width || 0;
+    rows = m.height || 0;
+    layers = m.layers || [];
     try {
         const spawnRegion = gameData.variables["civilian spawn"].default;
         if (spawnRegion) {
@@ -960,41 +1006,57 @@ function setupMap(jsonObj) {
 }
 
 function loadImages() {
+    let forceBootTimeout = setTimeout(() => {
+        if (assetsLoaded < 2) {
+            console.warn("Images took too long to load, bypassing lock...");
+            assetsLoaded = 2;
+            bootEngine();
+        }
+    }, 5000);
+
+    const onAssetError = (e) => {
+        console.warn("Asset failed to load, bypassing to prevent lock.");
+        onAssetLoad();
+    };
+
     tilesheetImg.crossOrigin = "Anonymous";
     tilesheetImg.onload = onAssetLoad;
-    tilesheetImg.onerror = () => {
-        document.getElementById('loading-text').innerText = "ERROR: Could not load tilesheet from Cache!";
-        document.getElementById('loading-text').style.color = "red";
-    };
+    tilesheetImg.onerror = onAssetError;
     tilesheetImg.src = "assets/tilesheet.png";
+    
     playerImg.crossOrigin = "Anonymous";
     playerImg.onload = onAssetLoad;
-    playerImg.onerror = () => {
-        document.getElementById('loading-text').innerText = "ERROR: Could not load player sprite!";
-        document.getElementById('loading-text').style.color = "red";
-    };
+    playerImg.onerror = onAssetError;
     playerImg.src = "assets/player.png";
-}
 
-function onAssetLoad() {
-    assetsLoaded++;
-    if (assetsLoaded === 2) {
-        document.getElementById('loading-text').innerText = "LOADING...";
-        requestAnimationFrame(() => {
-            setTimeout(() => {
-                preRenderMap(); 
-                document.querySelectorAll('#loading-screen, .engine-loading-screen').forEach(el => el.remove());
-                canvas.style.display = 'block';
-                document.getElementById('play-menu').style.display = 'block';
-                resizeCanvas();
-                lastTime = performance.now();
-                requestAnimationFrame(gameLoop);
-            }, 50);
-        });
+    function onAssetLoad() {
+        assetsLoaded++;
+        if (assetsLoaded >= 2) {
+            clearTimeout(forceBootTimeout);
+            bootEngine();
+        }
     }
 }
 
+function bootEngine() {
+    const ldText = document.getElementById('loading-text');
+    if (ldText) ldText.innerText = "LOADING...";
+    requestAnimationFrame(() => {
+        setTimeout(() => {
+            preRenderMap(); 
+            document.querySelectorAll('#loading-screen, .engine-loading-screen').forEach(el => el.remove());
+            if (canvas) canvas.style.display = 'block';
+            const pm = document.getElementById('play-menu');
+            if (pm) pm.style.display = 'block';
+            resizeCanvas();
+            lastTime = performance.now();
+            requestAnimationFrame(gameLoop);
+        }, 50);
+    });
+}
+
 function preRenderMap() {
+    if (!columns || !rows) return;
     const numChunksX = Math.ceil((columns * TILE_SIZE) / CHUNK_SIZE);
     const numChunksY = Math.ceil((rows * TILE_SIZE) / CHUNK_SIZE);
     for (let cy = 0; cy < numChunksY; cy++) {
@@ -1005,19 +1067,24 @@ function preRenderMap() {
             bgCanvas.width = CHUNK_SIZE;
             bgCanvas.height = CHUNK_SIZE;
             const bgCtx = bgCanvas.getContext('2d', { alpha: true });
-            bgCtx.imageSmoothingEnabled = false;
+            if (bgCtx) bgCtx.imageSmoothingEnabled = false;
+            
             const fgCanvas = document.createElement('canvas');
             fgCanvas.width = CHUNK_SIZE;
             fgCanvas.height = CHUNK_SIZE;
             const fgCtx = fgCanvas.getContext('2d', { alpha: true });
-            fgCtx.imageSmoothingEnabled = false;
+            if (fgCtx) fgCtx.imageSmoothingEnabled = false;
+            
             layers.forEach(layer => {
                 if (layer.type !== "tilelayer" || !layer.visible) return;
                 const targetCtx = layer.name === "trees" ? fgCtx : bgCtx;
+                if (!targetCtx) return;
+                
                 const startCol = Math.floor((cx * CHUNK_SIZE) / TILE_SIZE);
                 const endCol = Math.ceil(((cx + 1) * CHUNK_SIZE) / TILE_SIZE);
                 const startRow = Math.floor((cy * CHUNK_SIZE) / TILE_SIZE);
                 const endRow = Math.ceil(((cy + 1) * CHUNK_SIZE) / TILE_SIZE);
+                
                 for (let r = Math.max(0, startRow); r < Math.min(rows, endRow); r++) {
                     for (let c = Math.max(0, startCol); c < Math.min(columns, endCol); c++) {
                         const tileIndex = r * columns + c;
@@ -1227,21 +1294,26 @@ setInterval(() => {
 }, 100);
 
 function render() {
+    if (!ctx) return;
     ctx.fillStyle = "#000000";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.save();
     ctx.scale(viewScale, viewScale);
 
-    const startCX = Math.max(0, Math.floor(camera.x / CHUNK_SIZE));
-    const endCX = Math.min(bgChunks[0].length - 1, Math.floor((camera.x + camera.width) / CHUNK_SIZE));
-    const startCY = Math.max(0, Math.floor(camera.y / CHUNK_SIZE));
-    const endCY = Math.min(bgChunks.length - 1, Math.floor((camera.y + camera.height) / CHUNK_SIZE));
+    if (bgChunks.length > 0) {
+        const startCX = Math.max(0, Math.floor(camera.x / CHUNK_SIZE));
+        const endCX = Math.min(bgChunks[0].length - 1, Math.floor((camera.x + camera.width) / CHUNK_SIZE));
+        const startCY = Math.max(0, Math.floor(camera.y / CHUNK_SIZE));
+        const endCY = Math.min(bgChunks.length - 1, Math.floor((camera.y + camera.height) / CHUNK_SIZE));
 
-    for (let cy = startCY; cy <= endCY; cy++) {
-        for (let cx = startCX; cx <= endCX; cx++) {
-            const destX = Math.floor(cx * CHUNK_SIZE - camera.x);
-            const destY = Math.floor(cy * CHUNK_SIZE - camera.y);
-            ctx.drawImage(bgChunks[cy][cx], destX, destY);
+        for (let cy = startCY; cy <= endCY; cy++) {
+            for (let cx = startCX; cx <= endCX; cx++) {
+                if (bgChunks[cy] && bgChunks[cy][cx]) {
+                    const destX = Math.floor(cx * CHUNK_SIZE - camera.x);
+                    const destY = Math.floor(cy * CHUNK_SIZE - camera.y);
+                    ctx.drawImage(bgChunks[cy][cx], destX, destY);
+                }
+            }
         }
     }
 
@@ -1283,11 +1355,20 @@ function render() {
         }
     }
 
-    for (let cy = startCY; cy <= endCY; cy++) {
-        for (let cx = startCX; cx <= endCX; cx++) {
-            const destX = Math.floor(cx * CHUNK_SIZE - camera.x);
-            const destY = Math.floor(cy * CHUNK_SIZE - camera.y);
-            ctx.drawImage(fgChunks[cy][cx], destX, destY);
+    if (fgChunks.length > 0) {
+        const startCX = Math.max(0, Math.floor(camera.x / CHUNK_SIZE));
+        const endCX = Math.min(fgChunks[0].length - 1, Math.floor((camera.x + camera.width) / CHUNK_SIZE));
+        const startCY = Math.max(0, Math.floor(camera.y / CHUNK_SIZE));
+        const endCY = Math.min(fgChunks.length - 1, Math.floor((camera.y + camera.height) / CHUNK_SIZE));
+
+        for (let cy = startCY; cy <= endCY; cy++) {
+            for (let cx = startCX; cx <= endCX; cx++) {
+                if (fgChunks[cy] && fgChunks[cy][cx]) {
+                    const destX = Math.floor(cx * CHUNK_SIZE - camera.x);
+                    const destY = Math.floor(cy * CHUNK_SIZE - camera.y);
+                    ctx.drawImage(fgChunks[cy][cx], destX, destY);
+                }
+            }
         }
     }
 
