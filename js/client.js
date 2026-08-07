@@ -260,7 +260,7 @@ let assetsLoaded = 0;
 
 const outfitOffsets = {
     uniform: { x: 0, y: 0, w: 64, h: 64 },
-    cap: { x: 1.5, y: -5, w: 60, h: 71 }
+    cap: { x: 1.25, y: -5, w: 60, h: 71 }
 };
 
 const keys = {
@@ -1310,7 +1310,7 @@ function gameLoop(now) {
         if (!gameData || !gameData.variables) return false;
         const pw = player.width || 45;
         const ph = player.height || 45;
-        const P = 80;
+        const P = 40;
         for (const key in gameData.variables) {
             if (key.toLowerCase().includes('locker') && gameData.variables[key].default) {
                 const r = gameData.variables[key].default;
