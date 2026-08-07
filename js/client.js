@@ -1279,22 +1279,21 @@ function gameLoop(now) {
 
 (function() {
     const lockerHTML = `
-        <div id="custom-military-locker" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: transparent; z-index: 10005; align-items: center; justify-content: center;">
-            <div style="background: rgba(15, 15, 15, 0.98); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; width: 400px; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.8); animation: divFadeIn 0.2s ease-out forwards;">
-                <div style="background: #e67e22; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center;">
-                    <h4 style="color: white; font-weight: 800; text-transform: uppercase; letter-spacing: 2px; font-size: 16px; margin: 0;">Military Locker</h4>
-                    <button id="close-locker-btn" style="background: #c0392b; border: none; color: white; border-radius: 4px; padding: 4px 10px; cursor: pointer; font-weight: bold;">X</button>
-                </div>
-                <div style="padding: 30px; display: flex; gap: 20px; justify-content: center;">
-                    <button id="equip-cap-btn" class="action-btn" style="width: 120px !important; height: 120px !important; max-width: none !important; flex-direction: column; gap: 10px; cursor: pointer;">
-                        <img src="assets/military-cap.png" style="width: 64px; height: 64px; object-fit: contain; pointer-events: none;">
-                        <span style="pointer-events: none;">CAP</span>
-                    </button>
-                    <button id="equip-uniform-btn" class="action-btn" style="width: 120px !important; height: 120px !important; max-width: none !important; flex-direction: column; gap: 10px; cursor: pointer;">
-                        <img src="assets/military-uniform.png" style="width: 64px; height: 64px; object-fit: contain; pointer-events: none;">
-                        <span style="pointer-events: none;">UNIFORM</span>
-                    </button>
-                </div>
+        <div id="locker-prompt" style="display: none; position: fixed; top: 60px; left: 50%; transform: translateX(-50%); background: #e67e22; color: white; padding: 10px 20px; border-radius: 4px; font-weight: 800; font-family: 'Segoe UI', sans-serif; text-transform: uppercase; letter-spacing: 2px; font-size: 14px; z-index: 10000; box-shadow: 0 5px 15px rgba(0,0,0,0.5); pointer-events: none; animation: divFadeIn 0.2s ease-out forwards;">PRESS [F] TO INTERACT</div>
+        <div id="custom-military-locker" style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(10, 10, 10, 0.98); border: 1px solid #333; border-bottom: 4px solid #e67e22; border-radius: 12px; width: 400px; max-height: 480px; box-shadow: 0 20px 50px rgba(0,0,0,0.9); font-family: 'Segoe UI', sans-serif; z-index: 10000; display: none; flex-direction: column; animation: divFadeIn 0.3s ease-out forwards; overflow: hidden;">
+            <div style="background: #e67e22; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
+                <span style="color: white; font-weight: 800; text-transform: uppercase; letter-spacing: 2px; font-size: 16px;">Military Locker</span>
+                <button id="close-locker-btn" style="background: #c0392b; border: none; color: white; border-radius: 4px; padding: 4px 10px; cursor: pointer; font-weight: bold; transition: transform 0.1s ease;">X</button>
+            </div>
+            <div style="padding: 30px; display: flex; gap: 20px; justify-content: center; overflow-y: auto; color: white;">
+                <button id="equip-cap-btn" class="action-btn" style="width: 120px !important; height: 120px !important; max-width: none !important; flex-direction: column; gap: 10px; cursor: pointer;">
+                    <img src="assets/military-cap.png" style="width: 64px; height: 64px; object-fit: contain; pointer-events: none;">
+                    <span style="pointer-events: none;">CAP</span>
+                </button>
+                <button id="equip-uniform-btn" class="action-btn" style="width: 120px !important; height: 120px !important; max-width: none !important; flex-direction: column; gap: 10px; cursor: pointer;">
+                    <img src="assets/military-uniform.png" style="width: 64px; height: 64px; object-fit: contain; pointer-events: none;">
+                    <span style="pointer-events: none;">UNIFORM</span>
+                </button>
             </div>
         </div>
     `;
@@ -1305,12 +1304,22 @@ function gameLoop(now) {
         lockerUI.style.display = 'none';
     });
 
+    setInterval(() => {
+        const prompt = document.getElementById('locker-prompt');
+        if (!prompt) return;
+        if (isInLockerRegion() && lockerUI.style.display !== 'flex' && player.team === 'Military') {
+            if (prompt.style.display !== 'block') prompt.style.display = 'block';
+        } else {
+            if (prompt.style.display !== 'none') prompt.style.display = 'none';
+        }
+    }, 100);
+
     function isInLockerRegion() {
         const gameData = GAME_JSON.data || GAME_JSON;
         if (!gameData || !gameData.variables) return false;
         const pw = player.width || 45;
         const ph = player.height || 45;
-        const P = 48;
+        const P = 40;
         for (const key in gameData.variables) {
             if (key.toLowerCase().includes('locker') && gameData.variables[key].default) {
                 const r = gameData.variables[key].default;
