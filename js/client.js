@@ -1,96 +1,4 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-import { getDatabase, ref, set, onValue, onDisconnect } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
-import { getAuth, signInAnonymously, onAuthStateChanged, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
-
-const firebaseConfig = {
-    apiKey: "AIzaSyBxu2JIxVLsCTi91rfEt3X58Q3d2uaocAw",
-    authDomain: "military-roleplay-io.firebaseapp.com",
-    databaseURL: "https://military-roleplay-io-default-rtdb.europe-west1.firebasedatabase.app",
-    projectId: "military-roleplay-io",
-    storageBucket: "military-roleplay-io.firebasestorage.app",
-    messagingSenderId: "823014317267",
-    appId: "1:823014317267:web:da61c79a248423ff5f4826"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
-const auth = getAuth(app);
-const googleProvider = new GoogleAuthProvider();
-
-let myId = null;
-let allPlayers = {};
-let isPlaying = false;
-let previousLeaderboardHTML = '';
-
-let isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || ('ontouchstart' in window);
-let leftJoy = { x: 0, y: 0, active: false };
-let rightJoy = { x: 0, y: 0, active: false };
-let isAttacking = false;
-
-const militaryRanks = [
-    "• [E1] Private •", "• [E2] Private First Class •", "• [E3] Corporal •",
-    "• [E4] Lance Corporal •", "• [E5] Sergeant •", "• [E6] Staff Sergeant •",
-    "• [E7] Sergeant First Class •", "• [E8] Master Sergeant •", "• [E9] Doesn't Exist •",
-    "• [E10] First Sergeant •", "• [E11] Sergeant Major •", "• [E12] Command Sergeant Major •",
-    "• [O1] Second Lieutenant •", "• [O2] First Lieutenant •", "• [O3] Captain •",
-    "• [O4] Major •", "• [O5] Lieutenant Colonel •", "• [O6] Colonel •",
-    "• [O7] Brigadier General •", "• [O8] Major General •", "• [O9] Lieutenant General •",
-    "• [O10] General •"
-];
-
-let player = {
-    name: "",
-    email: "",
-    team: "Civilians",
-    rank: "• Civilian •",
-    money: 0,
-    nextMoneyRewardTime: 0,
-    x: 0, y: 0, 
-    width: 45, height: 45, 
-    vx: 0, vy: 0,
-    angle: 0,
-    scale: 1,
-    bopTimer: 0,
-    chats: [],
-    activeChats: []
-};
-
-function syncPlayer() {
-    if (!myId) return;
-    set(ref(db, `players/${myId}`), {
-        name: player.name,
-        email: player.email,
-        team: player.team,
-        rank: player.rank,
-        money: player.money,
-        x: player.x,
-        y: player.y,
-        angle: player.angle,
-        scale: player.scale,
-        isAttacking: isAttacking,
-        chats: player.chats,
-        lastSeen: Date.now()
-    });
-}
-
-function assignRank() {
-    if (player.email === "omarshafee037@gmail.com") {
-        player.rank = "• [O10] General •";
-    } else if (player.team === "Military") {
-        player.rank = militaryRanks[0];
-    } else {
-        player.rank = "• Civilian •";
-    }
-}
-
-function spawnPlayer(regionName) {
-    if (typeof GAME_JSON === 'undefined') return;
-    const gameData = GAME_JSON.data || GAME_JSON;
-    if (gameData.variables && gameData.variables[regionName] && gameData.variables[regionName].default) {
-        const spawnRegion = gameData.variables[regionName].default;
-        player.x = spawnRegion.x + (Math.random() * spawnRegion.width) - (player.width / 2);
-        player.y = spawnRegion.y + (Math.random() * spawnRegion.height) - (player.height / 2);
-    } else {
+} else {
         player.x = 1500;
         player.y = 2200;
     }
@@ -270,16 +178,6 @@ function preventZoom(e) {
 }
 window.addEventListener('wheel', preventZoom, { passive: false });
 window.addEventListener('keydown', preventZoom, { passive: false });
-window.addEventListener('mousedown', e => {
-    if (e.button === 0 && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
-        isAttacking = true;
-    }
-});
-window.addEventListener('mouseup', e => {
-    if (e.button === 0) {
-        isAttacking = false;
-    }
-});
 
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d', { alpha: false });
@@ -821,17 +719,17 @@ function setupMobileControls() {
     mobileUI.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; z-index:100000; pointer-events:none;';
     
     mobileUI.innerHTML = `
-        <div id="left-joystick" style="position:absolute; bottom:8vmin; left:8vmin; width:25vmin; height:25vmin; background:rgba(0,0,0,0.6); border:3px solid #e67e22; border-radius:50%; pointer-events:auto; touch-action:none;">
-            <div id="left-stick" style="position:absolute; top:50%; left:50%; width:10vmin; height:10vmin; background:#e67e22; border-radius:50%; transform:translate(-50%, -50%); box-shadow:0 0 10px rgba(0,0,0,0.8);"></div>
+        <div id="left-joystick" style="position:absolute; bottom:8vh; left:5vw; width:130px; height:130px; background:rgba(0,0,0,0.6); border:2px solid rgba(230,126,34,0.5); border-radius:50%; pointer-events:auto; touch-action:none;">
+            <div id="left-stick" style="position:absolute; top:50%; left:50%; width:60px; height:60px; background:rgba(230,126,34,0.9); border-radius:50%; transform:translate(-50%, -50%); box-shadow:0 0 15px rgba(230,126,34,0.8);"></div>
         </div>
-        <div id="right-joystick" style="position:absolute; bottom:8vmin; right:35vmin; width:25vmin; height:25vmin; background:rgba(0,0,0,0.6); border:3px solid #e67e22; border-radius:50%; pointer-events:auto; touch-action:none;">
-            <div id="right-stick" style="position:absolute; top:50%; left:50%; width:10vmin; height:10vmin; background:#e67e22; border-radius:50%; transform:translate(-50%, -50%); box-shadow:0 0 10px rgba(0,0,0,0.8);"></div>
+        <div id="right-joystick" style="position:absolute; bottom:8vh; right:25vw; width:130px; height:130px; background:rgba(0,0,0,0.6); border:2px solid rgba(230,126,34,0.5); border-radius:50%; pointer-events:auto; touch-action:none;">
+            <div id="right-stick" style="position:absolute; top:50%; left:50%; width:60px; height:60px; background:rgba(230,126,34,0.9); border-radius:50%; transform:translate(-50%, -50%); box-shadow:0 0 15px rgba(230,126,34,0.8);"></div>
         </div>
-        <button id="mobile-attack-btn" style="position:absolute; bottom:13vmin; right:8vmin; width:15vmin; height:15vmin; background:rgba(0,0,0,0.6); border:3px solid #e67e22; border-radius:50%; pointer-events:auto; touch-action:none; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 15px rgba(0,0,0,0.5);">
-            <svg viewBox="0 0 24 24" width="8vmin" height="8vmin" fill="#e67e22"><circle cx="12" cy="12" r="8"></circle></svg>
+        <button id="mobile-attack-btn" style="position:absolute; bottom:8vh; right:5vw; width:100px; height:100px; background:rgba(0,0,0,0.8); border:4px solid #e67e22; border-radius:50%; pointer-events:auto; touch-action:none; display:flex; align-items:center; justify-content:center; box-shadow:0 0 20px rgba(230,126,34,0.6);">
+            <div id="mobile-attack-inner" style="width:50px; height:50px; background:#e67e22; border-radius:50%; transition:transform 0.1s;"></div>
         </button>
-        <button id="mobile-chat-btn" style="position:absolute; top:20px; right:150px; width:44px; height:44px; background:#111111; border:none; border-bottom:3px solid #e67e22; border-radius:6px; pointer-events:auto; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 15px rgba(0,0,0,0.5);">
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="white"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+        <button id="mobile-chat-btn" style="position:absolute; top:80px; right:20px; width:50px; height:50px; background:#111111; border:none; border-bottom:3px solid #e67e22; border-radius:8px; pointer-events:auto; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 15px rgba(0,0,0,0.5);">
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="white"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
         </button>
     `;
     document.body.appendChild(mobileUI);
@@ -849,7 +747,7 @@ function setupMobileControls() {
             
             let touch = Array.from(e.touches).find(t => {
                 let br = base.getBoundingClientRect();
-                return t.clientX >= br.left && t.clientX <= br.right && t.clientY >= br.top && t.clientY <= br.bottom;
+                return t.clientX >= br.left - 50 && t.clientX <= br.right + 50 && t.clientY >= br.top - 50 && t.clientY <= br.bottom + 50;
             }) || e.changedTouches[0];
             
             if (!touch) return;
@@ -887,9 +785,17 @@ function setupMobileControls() {
     bindJoy('right-joystick', 'right-stick', rightJoy);
     
     const atkBtn = document.getElementById('mobile-attack-btn');
-    atkBtn.addEventListener('touchstart', (e) => { e.preventDefault(); isAttacking = true; atkBtn.style.background = "rgba(230,126,34,0.5)"; });
-    atkBtn.addEventListener('touchend', (e) => { e.preventDefault(); isAttacking = false; atkBtn.style.background = "rgba(0,0,0,0.6)"; });
-    atkBtn.addEventListener('touchcancel', (e) => { e.preventDefault(); isAttacking = false; atkBtn.style.background = "rgba(0,0,0,0.6)"; });
+    const atkInner = document.getElementById('mobile-attack-inner');
+    
+    function handleAttack(active) {
+        isAttacking = active;
+        atkBtn.style.background = active ? "rgba(230,126,34,0.3)" : "rgba(0,0,0,0.8)";
+        atkInner.style.transform = active ? "scale(0.8)" : "scale(1)";
+    }
+    
+    atkBtn.addEventListener('touchstart', (e) => { e.preventDefault(); handleAttack(true); }, {passive: false});
+    atkBtn.addEventListener('touchend', (e) => { e.preventDefault(); handleAttack(false); }, {passive: false});
+    atkBtn.addEventListener('touchcancel', (e) => { e.preventDefault(); handleAttack(false); }, {passive: false});
     
     document.getElementById('mobile-chat-btn').addEventListener('click', () => {
         const chatContainer = document.getElementById('chat-input-container');
@@ -1154,8 +1060,6 @@ function update(dt) {
     if (isMobile) {
         if (rightJoy.active) {
             player.angle = Math.atan2(rightJoy.y, rightJoy.x) + (Math.PI / 2);
-        } else if (leftJoy.active) {
-            player.angle = Math.atan2(leftJoy.y, leftJoy.x) + (Math.PI / 2);
         }
     } else {
         const scaledMouseX = mouseX / viewScale;
