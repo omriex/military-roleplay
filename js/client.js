@@ -45,6 +45,8 @@ function syncPlayer() {
         angle: player.angle,
         scale: player.scale,
         chats: player.chats,
+        wearingCap: player.wearingCap || false,
+        wearingUniform: player.wearingUniform || false,
         lastSeen: Date.now()
     });
 }
@@ -214,6 +216,8 @@ onAuthStateChanged(auth, (user) => {
                     p.team = remote.team || "Civilians";
                     p.rank = remote.rank || "• Civilian •";
                     p.money = remote.money || 0;
+                    p.wearingCap = remote.wearingCap || false;
+                    p.wearingUniform = remote.wearingUniform || false;
                     p.lastSeen = remote.lastSeen;
                     p.localLastUpdate = remote.localLastUpdate;
                     
@@ -269,7 +273,14 @@ const PLAYER_URL = "assets/player.png";
 
 const tilesheetImg = new Image();
 const playerImg = new Image();
+const militaryCapImg = new Image();
+const militaryUniformImg = new Image();
 let assetsLoaded = 0;
+
+const outfitOffsets = {
+    uniform: { x: 0, y: 0, w: 64, h: 64 },
+    cap: { x: 0, y: -10, w: 64, h: 64 }
+};
 
 const keys = {
     w: false, a: false, s: false, d: false, c: false, shift: false,
@@ -833,11 +844,19 @@ function loadImages() {
         document.getElementById('loading-text').style.color = "red";
     };
     playerImg.src = "assets/player.png";
+
+    militaryCapImg.crossOrigin = "Anonymous";
+    militaryCapImg.onload = onAssetLoad;
+    militaryCapImg.src = "assets/military-cap.png";
+
+    militaryUniformImg.crossOrigin = "Anonymous";
+    militaryUniformImg.onload = onAssetLoad;
+    militaryUniformImg.src = "assets/military-uniform.png";
 }
 
 function onAssetLoad() {
     assetsLoaded++;
-    if (assetsLoaded === 2) {
+    if (assetsLoaded === 4) {
         document.getElementById('loading-text').innerText = "LOADING...";
         requestAnimationFrame(() => {
             setTimeout(() => {
@@ -1117,6 +1136,18 @@ function render() {
             ctx.translate(pRenderX, pRenderY);
             ctx.rotate(drawAngle);
             ctx.drawImage(playerImg, -pScaledW / 2, -pScaledH / 2, pScaledW, pScaledH);
+            
+            if (p.wearingUniform && militaryUniformImg) {
+                const uw = outfitOffsets.uniform.w * drawScale;
+                const uh = outfitOffsets.uniform.h * drawScale;
+                ctx.drawImage(militaryUniformImg, (outfitOffsets.uniform.x * drawScale) - uw / 2, (outfitOffsets.uniform.y * drawScale) - uh / 2, uw, uh);
+            }
+            if (p.wearingCap && militaryCapImg) {
+                const cw = outfitOffsets.cap.w * drawScale;
+                const ch = outfitOffsets.cap.h * drawScale;
+                ctx.drawImage(militaryCapImg, (outfitOffsets.cap.x * drawScale) - cw / 2, (outfitOffsets.cap.y * drawScale) - ch / 2, cw, ch);
+            }
+            
             ctx.restore();
         }
     }
@@ -1257,3 +1288,150 @@ function gameLoop(now) {
     render();
     requestAnimationFrame(gameLoop);
 }
+
+(function() {
+    const lockerHTML = `
+        <div id="custom-military-locker" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.7); z-index: 10005; align-items: center; justify-content: center;">
+            <div style="background: rgba(15, 15, 15, 0.98); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; width: 400px; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.8);">
+                <div style="background: #e67e22; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center;">
+                    <h4 style="color: white; font-weight: 800; text-transform: uppercase; letter-spacing: 2px; font-size: 16px; margin: 0;">Military Locker</h4>
+                    <button id="close-locker-btn" style="background: #c0392b; border: none; color: white; border-radius: 4px; padding: 4px 10px; cursor: pointer; font-weight: bold;">X</button>
+                </div>
+                <div style="padding: 30px; display: flex; gap: 20px; justify-content: center;">
+                    <button id="equip-cap-btn" class="action-btn" style="width: 120px !important; height: 120px !important; max-width: none !important; flex-direction: column; gap: 10px; cursor: pointer;">
+                        <img src="assets/military-cap.png" style="width: 64px; height: 64px; object-fit: contain; pointer-events: none;">
+                        <span style="pointer-events: none;">CAP</span>
+                    </button>
+                    <button id="equip-uniform-btn" class="action-btn" style="width: 120px !important; height: 120px !important; max-width: none !important; flex-direction: column; gap: 10px; cursor: pointer;">
+                        <img src="assets/military-uniform.png" style="width: 64px; height: 64px; object-fit: contain; pointer-events: none;">
+                        <span style="pointer-events: none;">UNIFORM</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', lockerHTML);
+
+    const lockerUI = document.getElementById('custom-military-locker');
+    document.getElementById('close-locker-btn').addEventListener('click', () => {
+        lockerUI.style.display = 'none';
+    });
+
+    function isInLockerRegion() {
+        const gameData = GAME_JSON.data || GAME_JSON;
+        if (!gameData || !gameData.variables) return false;
+        for (const key in gameData.variables) {
+            if (key.toLowerCase().includes('locker') && gameData.variables[key].default) {
+                const r = gameData.variables[key].default;
+                if (player.x >= r.x && player.x <= r.x + r.width && player.y >= r.y && player.y <= r.y + r.height) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key.toLowerCase() === 'f' && isInLockerRegion()) {
+            if (player.team === 'Military') {
+                lockerUI.style.display = lockerUI.style.display === 'none' ? 'flex' : 'none';
+            }
+        }
+    });
+
+    const inventoryState = { cap: false, uniform: false };
+
+    function toggleItem(type) {
+        let existing = document.querySelector(`.draggable-item[data-type="${type}"]`);
+        if (existing) {
+            existing.remove();
+            inventoryState[type] = false;
+        } else {
+            let slotFound = null;
+            for(let i=1; i<=5; i++) {
+                let s = document.getElementById('inv-slot-' + i);
+                if (s && s.children.length === 0) {
+                    slotFound = s;
+                    break;
+                }
+            }
+            if (slotFound) {
+                let img = document.createElement('img');
+                img.src = `assets/military-${type}.png`;
+                img.dataset.type = type;
+                img.className = 'draggable-item';
+                img.style.cssText = 'width: 32px; height: 32px; object-fit: contain; cursor: grab; pointer-events: auto; z-index: 10000;';
+                slotFound.innerHTML = '';
+                slotFound.appendChild(img);
+                inventoryState[type] = true;
+            }
+        }
+        
+        player.wearingCap = inventoryState.cap;
+        player.wearingUniform = inventoryState.uniform;
+        if (typeof syncPlayer === 'function') syncPlayer();
+    }
+
+    document.getElementById('equip-cap-btn').addEventListener('click', () => toggleItem('cap'));
+    document.getElementById('equip-uniform-btn').addEventListener('click', () => toggleItem('uniform'));
+
+    let draggedItem = null;
+    let dragOffsetX = 0;
+    let dragOffsetY = 0;
+    let originalSlot = null;
+
+    document.addEventListener('mousedown', (e) => {
+        if (e.target.classList.contains('draggable-item')) {
+            draggedItem = e.target;
+            originalSlot = draggedItem.parentElement;
+            
+            const rect = draggedItem.getBoundingClientRect();
+            dragOffsetX = e.clientX - rect.left;
+            dragOffsetY = e.clientY - rect.top;
+            
+            draggedItem.style.position = 'fixed';
+            draggedItem.style.pointerEvents = 'none';
+            draggedItem.style.cursor = 'grabbing';
+            document.body.appendChild(draggedItem);
+            
+            draggedItem.style.left = (e.clientX - dragOffsetX) + 'px';
+            draggedItem.style.top = (e.clientY - dragOffsetY) + 'px';
+        }
+    });
+
+    document.addEventListener('mousemove', (e) => {
+        if (draggedItem) {
+            draggedItem.style.left = (e.clientX - dragOffsetX) + 'px';
+            draggedItem.style.top = (e.clientY - dragOffsetY) + 'px';
+        }
+    });
+
+    document.addEventListener('mouseup', (e) => {
+        if (draggedItem) {
+            let elemBelow = document.elementFromPoint(e.clientX, e.clientY);
+            let targetSlot = elemBelow ? elemBelow.closest('.inv-slot') : null;
+            
+            if (targetSlot) {
+                const existingItem = targetSlot.querySelector('.draggable-item');
+                if (existingItem && existingItem !== draggedItem) {
+                    originalSlot.appendChild(existingItem);
+                }
+                Array.from(targetSlot.childNodes).forEach(n => {
+                    if (n.nodeType === 3) n.remove();
+                });
+                targetSlot.appendChild(draggedItem);
+            } else {
+                originalSlot.appendChild(draggedItem);
+            }
+            
+            draggedItem.style.position = '';
+            draggedItem.style.pointerEvents = 'auto';
+            draggedItem.style.cursor = 'grab';
+            draggedItem.style.left = '';
+            draggedItem.style.top = '';
+            
+            draggedItem = null;
+            originalSlot = null;
+        }
+    });
+})();
