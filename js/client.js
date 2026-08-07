@@ -1,3 +1,4 @@
+
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
 import { getDatabase, ref, set, onValue, onDisconnect } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 import { getAuth, signInAnonymously, onAuthStateChanged, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
@@ -19,13 +20,6 @@ const googleProvider = new GoogleAuthProvider();
 
 let myId = null;
 let allPlayers = {};
-let isPlaying = false;
-let previousLeaderboardHTML = '';
-
-let isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || ('ontouchstart' in window);
-let leftJoy = { x: 0, y: 0, active: false };
-let rightJoy = { x: 0, y: 0, active: false };
-let isAttacking = false;
 
 const militaryRanks = [
     "• [E1] Private •", "• [E2] Private First Class •", "• [E3] Corporal •",
@@ -37,23 +31,6 @@ const militaryRanks = [
     "• [O7] Brigadier General •", "• [O8] Major General •", "• [O9] Lieutenant General •",
     "• [O10] General •"
 ];
-
-let player = {
-    name: "",
-    email: "",
-    team: "Civilians",
-    rank: "• Civilian •",
-    money: 0,
-    nextMoneyRewardTime: 0,
-    x: 0, y: 0, 
-    width: 45, height: 45, 
-    vx: 0, vy: 0,
-    angle: 0,
-    scale: 1,
-    bopTimer: 0,
-    chats: [],
-    activeChats: []
-};
 
 function syncPlayer() {
     if (!myId) return;
@@ -67,7 +44,6 @@ function syncPlayer() {
         y: player.y,
         angle: player.angle,
         scale: player.scale,
-        isAttacking: isAttacking,
         chats: player.chats,
         lastSeen: Date.now()
     });
@@ -159,25 +135,24 @@ function updateLeaderboard() {
         }
     }
     
-    if (html !== previousLeaderboardHTML) {
-        scoreboardList.innerHTML = html;
-        previousLeaderboardHTML = html;
-    }
-    
+    scoreboardList.innerHTML = html;
     if (playerAttr) playerAttr.innerText = (player.money || 0).toString();
 }
+
+signInAnonymously(auth).catch((error) => {
+    alert("Multiplayer Error! Please enable 'Anonymous' in Firebase Authentication. Details: " + error.message);
+});
 
 onAuthStateChanged(auth, (user) => {
     if (user) {
         myId = user.uid;
-        if (!user.isAnonymous && user.email) {
+        if (user.email) {
             player.email = user.email;
             assignRank();
+            const btn = document.getElementById('google-login-btn');
             const txt = document.getElementById('google-login-text');
-            if (txt) txt.innerText = "LOG OUT";
-        } else {
-            const txt = document.getElementById('google-login-text');
-            if (txt) txt.innerText = "LOGIN";
+            if (txt) txt.innerText = "LOGGED IN";
+            if (btn) btn.style.pointerEvents = "none";
         }
         
         onDisconnect(ref(db, `players/${myId}`)).remove();
@@ -221,7 +196,6 @@ onAuthStateChanged(auth, (user) => {
                     p.team = remote.team || "Civilians";
                     p.rank = remote.rank || "• Civilian •";
                     p.money = remote.money || 0;
-                    p.isAttacking = remote.isAttacking || false;
                     
                     if (remote.chats) {
                         if (!p.activeChats) p.activeChats = [];
@@ -249,10 +223,6 @@ onAuthStateChanged(auth, (user) => {
                 }
             }
             updateLeaderboard(); 
-        });
-    } else {
-        signInAnonymously(auth).catch((error) => {
-            showNotification("Multiplayer Error! Details: " + error.message);
         });
     }
 });
@@ -286,6 +256,23 @@ const keys = {
     arrowup: false, arrowleft: false, arrowdown: false, arrowright: false
 };
 let mouseX = 0, mouseY = 0;
+
+let player = {
+    name: "",
+    email: "",
+    team: "Civilians",
+    rank: "• Civilian •",
+    money: 0,
+    nextMoneyRewardTime: 0,
+    x: 0, y: 0, 
+    width: 45, height: 45, 
+    vx: 0, vy: 0,
+    angle: 0,
+    scale: 1,
+    bopTimer: 0,
+    chats: [],
+    activeChats: []
+};
 
 let notifTimeout;
 function showNotification(msg) {
@@ -378,9 +365,9 @@ function initGame() {
     injectUI(GAME_JSON);
     bindUI(); 
     fixUI();
-    setupMobileControls();
     loadImages();
 }
+initGame();
 
 function resizeCanvas() {
     canvas.width = window.innerWidth;
@@ -486,9 +473,6 @@ function bindUI() {
     }
 
     document.getElementById('play-btn').addEventListener('click', () => {
-        if (isPlaying) return;
-        isPlaying = true;
-
         const nameInput = document.getElementById('player-name-input');
         let name = nameInput.value.trim();
         if (!nameInput.disabled) {
@@ -554,9 +538,6 @@ function fixUI() {
         #scoreboard-header { width: 250px !important; height: 44px !important; box-sizing: border-box !important; background: #111111 !important; border: none !important; border-bottom: 3px solid #e67e22 !important; border-radius: 6px !important; padding: 0 15px !important; margin: 0 !important; display: flex !important; }
         #leaderboard { top: 0 !important; right: 0 !important; padding: 0 !important; margin: 0 !important; position: relative !important; }
         #scoreboard { width: 250px !important; background: #111111 !important; border: none !important; border-bottom: 3px solid #e67e22 !important; border-radius: 6px !important; padding: 8px !important; margin-top: 10px !important; overflow-x: hidden !important; overflow-y: auto !important; }
-        #scoreboard::-webkit-scrollbar { width: 5px; }
-        #scoreboard::-webkit-scrollbar-thumb { background: #e67e22; border-radius: 10px; }
-        #scoreboard::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); }
         .ui-text-scoreboard div { width: 100% !important; box-sizing: border-box !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; }
         #bottom-right-ui-container { flex-direction: column !important; align-items: flex-end !important; gap: 10px !important; bottom: 20px !important; right: 20px !important; margin: 0 !important; padding: 0 !important; }
         .sidebar-wrapper { position: static !important; width: auto !important; height: auto !important; margin: 0 !important; padding: 0 !important; transform: none !important; }
@@ -593,26 +574,6 @@ function fixUI() {
         #bottom-right-ui-container #my-score-div > div > span:first-child { display: none !important; }
         #players-attribute-div { color: #fff !important; font-size: 16px !important; font-weight: 800 !important; font-family: 'Segoe UI', sans-serif !important; display: flex !important; align-items: center !important; gap: 8px !important; }
         #players-attribute-div::before { content: "$"; color: #2ecc71 !important; font-size: 18px !important; font-weight: 900 !important; }
-        @media (max-width: 768px) {
-            .sidebar-btn, body #open-shop-menu, body #open-settings-menu, body #open-note-menu, body #open-teams-menu, body #open-management-menu {
-                width: 50px !important; height: 50px !important; padding: 5px !important;
-            }
-            .sidebar-btn svg, body #open-shop-menu svg, body #open-settings-menu svg, body #open-note-menu svg, body #open-teams-menu svg, body #open-management-menu svg {
-                width: 16px !important; height: 16px !important; margin-bottom: 2px !important;
-            }
-            .sidebar-btn span, body #open-shop-menu span, body #open-settings-menu span, body #open-note-menu span, body #open-teams-menu span, body #open-management-menu span {
-                font-size: 8px !important;
-            }
-            #bottom-center-ui-container {
-                bottom: 80px !important; transform: translateX(-50%) scale(0.8) !important; transform-origin: bottom center !important;
-            }
-            #my-score-div > div {
-                padding: 0 10px !important; height: 36px !important; min-width: 100px !important;
-            }
-            #players-attribute-div { font-size: 14px !important; }
-            #players-attribute-div::before { font-size: 16px !important; }
-            #leaderboard { transform: scale(0.8); transform-origin: top right; }
-        }
     `;
     document.head.appendChild(fixStyle);
     const uiLayer = document.getElementById('game-ui-layer');
@@ -635,7 +596,6 @@ function fixUI() {
         homeBtn.setAttribute('data-tooltip', 'Return Home');
         homeBtn.innerHTML = `<svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" fill="white"/></svg>`;
         homeBtn.onclick = () => {
-            isPlaying = false;
             document.getElementById('game-ui-layer').style.display = 'none';
             document.getElementById('play-menu').style.display = 'block';
             document.getElementById('play-btn').innerText = 'CONTINUE ➔';
@@ -689,29 +649,21 @@ function fixUI() {
     googleBtn.onmouseout = () => { googleBtn.style.background = "#111111"; googleBtn.style.transform = "translateY(0)"; };
     googleBtn.onmousedown = () => { googleBtn.style.transform = "scale(0.95)"; };
     googleBtn.onclick = () => {
-        if (player.email) {
-            auth.signOut().then(() => {
-                player.email = "";
-                player.rank = "• Civilian •";
-                document.getElementById('google-login-text').innerText = "LOGIN";
-                assignRank();
-                syncPlayer();
-            });
-        } else {
-            signInWithPopup(auth, googleProvider).then((result) => {
-                const user = result.user;
-                player.email = user.email;
-                document.getElementById('google-login-text').innerText = "LOG OUT";
-                assignRank();
-                syncPlayer();
-            }).catch(error => {
-                showNotification("Login failed: " + error.message);
-            });
-        }
+        signInWithPopup(auth, googleProvider).then((result) => {
+            const user = result.user;
+            player.email = user.email;
+            document.getElementById('google-login-text').innerText = "LOGGED IN";
+            googleBtn.style.pointerEvents = "none";
+            assignRank();
+            syncPlayer();
+        }).catch(error => {
+            showNotification("Login failed: " + error.message);
+        });
     };
     
     if (player.email) {
-        document.getElementById('google-login-text').innerText = "LOG OUT";
+        document.getElementById('google-login-text').innerText = "LOGGED IN";
+        googleBtn.style.pointerEvents = "none";
     }
 
     document.body.appendChild(googleBtn);
@@ -801,101 +753,6 @@ function fixUI() {
     ['navbar-subscription-button', 'navbar-moderate-button', 'navbar-chat-button', 'navbar-leaderboard-button', 'open-moderation', 'navbar-setting-button'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.remove();
-    });
-}
-
-function setupMobileControls() {
-    if (!isMobile) return;
-    const mobileUI = document.createElement('div');
-    mobileUI.id = 'mobile-controls';
-    mobileUI.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; z-index:100000; pointer-events:none;';
-    
-    mobileUI.innerHTML = `
-        <div id="left-joystick" style="position:absolute; bottom:8vh; left:5vw; width:130px; height:130px; background:rgba(0,0,0,0.6); border:2px solid rgba(230,126,34,0.5); border-radius:50%; pointer-events:auto; touch-action:none;">
-            <div id="left-stick" style="position:absolute; top:50%; left:50%; width:60px; height:60px; background:rgba(230,126,34,0.9); border-radius:50%; transform:translate(-50%, -50%); box-shadow:0 0 15px rgba(230,126,34,0.8);"></div>
-        </div>
-        <div id="right-joystick" style="position:absolute; bottom:8vh; right:25vw; width:130px; height:130px; background:rgba(0,0,0,0.6); border:2px solid rgba(230,126,34,0.5); border-radius:50%; pointer-events:auto; touch-action:none;">
-            <div id="right-stick" style="position:absolute; top:50%; left:50%; width:60px; height:60px; background:rgba(230,126,34,0.9); border-radius:50%; transform:translate(-50%, -50%); box-shadow:0 0 15px rgba(230,126,34,0.8);"></div>
-        </div>
-        <button id="mobile-attack-btn" style="position:absolute; bottom:8vh; right:5vw; width:100px; height:100px; background:rgba(0,0,0,0.8); border:4px solid #e67e22; border-radius:50%; pointer-events:auto; touch-action:none; display:flex; align-items:center; justify-content:center; box-shadow:0 0 20px rgba(230,126,34,0.6);">
-            <div id="mobile-attack-inner" style="width:50px; height:50px; background:#e67e22; border-radius:50%; transition:transform 0.1s;"></div>
-        </button>
-        <button id="mobile-chat-btn" style="position:absolute; top:80px; right:20px; width:50px; height:50px; background:#111111; border:none; border-bottom:3px solid #e67e22; border-radius:8px; pointer-events:auto; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 15px rgba(0,0,0,0.5);">
-            <svg viewBox="0 0 24 24" width="24" height="24" fill="white"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
-        </button>
-    `;
-    document.body.appendChild(mobileUI);
-
-    function bindJoy(baseId, stickId, joyObj) {
-        const base = document.getElementById(baseId);
-        const stick = document.getElementById(stickId);
-        
-        function moveStick(e) {
-            e.preventDefault();
-            let rect = base.getBoundingClientRect();
-            let cx = rect.left + rect.width / 2;
-            let cy = rect.top + rect.height / 2;
-            let r = rect.width / 2;
-            
-            let touch = Array.from(e.touches).find(t => {
-                return t.clientX >= rect.left - 50 && t.clientX <= rect.right + 50 && t.clientY >= rect.top - 50 && t.clientY <= rect.bottom + 50;
-            }) || e.changedTouches[0];
-            
-            if (!touch) return;
-            
-            let dx = touch.clientX - cx;
-            let dy = touch.clientY - cy;
-            let dist = Math.sqrt(dx*dx + dy*dy);
-            
-            if (dist > r) {
-                dx = (dx / dist) * r;
-                dy = (dy / dist) * r;
-            }
-            
-            stick.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
-            joyObj.x = dx / r;
-            joyObj.y = dy / r;
-            joyObj.active = true;
-        }
-        
-        function resetStick(e) {
-            e.preventDefault();
-            stick.style.transform = `translate(-50%, -50%)`;
-            joyObj.x = 0;
-            joyObj.y = 0;
-            joyObj.active = false;
-        }
-        
-        base.addEventListener('touchstart', moveStick, {passive: false});
-        base.addEventListener('touchmove', moveStick, {passive: false});
-        base.addEventListener('touchend', resetStick, {passive: false});
-        base.addEventListener('touchcancel', resetStick, {passive: false});
-    }
-    
-    bindJoy('left-joystick', 'left-stick', leftJoy);
-    bindJoy('right-joystick', 'right-stick', rightJoy);
-    
-    const atkBtn = document.getElementById('mobile-attack-btn');
-    const atkInner = document.getElementById('mobile-attack-inner');
-    
-    function handleAttack(active) {
-        isAttacking = active;
-        atkBtn.style.background = active ? "rgba(230,126,34,0.3)" : "rgba(0,0,0,0.8)";
-        atkInner.style.transform = active ? "scale(0.8)" : "scale(1)";
-    }
-    
-    atkBtn.addEventListener('touchstart', (e) => { e.preventDefault(); handleAttack(true); }, {passive: false});
-    atkBtn.addEventListener('touchend', (e) => { e.preventDefault(); handleAttack(false); }, {passive: false});
-    atkBtn.addEventListener('touchcancel', (e) => { e.preventDefault(); handleAttack(false); }, {passive: false});
-    
-    document.getElementById('mobile-chat-btn').addEventListener('click', () => {
-        const chatContainer = document.getElementById('chat-input-container');
-        const chatInput = document.getElementById('chat-input');
-        if (chatContainer) {
-            chatContainer.style.display = 'block';
-            chatInput.value = '';
-            setTimeout(() => chatInput.focus(), 10);
-        }
     });
 }
 
@@ -1087,28 +944,16 @@ function update(dt) {
     
     let inputX = 0;
     let inputY = 0;
-
-    if (isMobile) {
-        inputX = leftJoy.x;
-        inputY = leftJoy.y;
-    }
-
     if (keys['w'] || keys['arrowup']) inputY -= 1;
     if (keys['s'] || keys['arrowdown']) inputY += 1;
     if (keys['a'] || keys['arrowleft']) inputX -= 1;
     if (keys['d'] || keys['arrowright']) inputX += 1;
     
     let isMoving = (inputX !== 0 || inputY !== 0);
-    if (isMoving && !isMobile) {
+    if (isMoving) {
         const length = Math.sqrt(inputX * inputX + inputY * inputY);
         inputX /= length;
         inputY /= length;
-    } else if (isMoving && isMobile) {
-        const length = Math.sqrt(inputX * inputX + inputY * inputY);
-        if (length > 1) {
-            inputX /= length;
-            inputY /= length;
-        }
     }
     
     if (keys['shift'] && isMoving) {
@@ -1148,17 +993,11 @@ function update(dt) {
     camera.x = player.x + (player.width / 2) - (camera.width / 2);
     camera.y = player.y + (player.height / 2) - (camera.height / 2);
 
-    if (isMobile) {
-        if (rightJoy.active) {
-            player.angle = Math.atan2(rightJoy.y, rightJoy.x) + (Math.PI / 2);
-        }
-    } else {
-        const scaledMouseX = mouseX / viewScale;
-        const scaledMouseY = mouseY / viewScale;
-        const playerScreenX = player.x - camera.x + (player.width / 2);
-        const playerScreenY = player.y - camera.y + (player.height / 2);
-        player.angle = Math.atan2(scaledMouseY - playerScreenY, scaledMouseX - playerScreenX) + (Math.PI / 2);
-    }
+    const scaledMouseX = mouseX / viewScale;
+    const scaledMouseY = mouseY / viewScale;
+    const playerScreenX = player.x - camera.x + (player.width / 2);
+    const playerScreenY = player.y - camera.y + (player.height / 2);
+    player.angle = Math.atan2(scaledMouseY - playerScreenY, scaledMouseX - playerScreenX) + (Math.PI / 2);
 
     for (let id in allPlayers) {
         if (id === myId) continue;
@@ -1176,7 +1015,7 @@ function update(dt) {
 }
 
 setInterval(() => {
-    if (isPlaying) {
+    if (myId && document.getElementById('play-menu').style.display === 'none') {
         const now = Date.now();
         while (now >= player.nextMoneyRewardTime) {
             player.nextMoneyRewardTime += (Math.random() * 15000 + 15000);
@@ -1206,8 +1045,13 @@ function render() {
         }
     }
 
-    if (isPlaying) {
-        if (!allPlayers[myId]) {
+    const playMenu = document.getElementById('play-menu');
+    const playBtn = document.getElementById('play-btn');
+    const isPlayMenuVisible = playMenu && playMenu.style.display !== 'none';
+    const isInitialLoad = isPlayMenuVisible && playBtn && playBtn.innerText.toUpperCase().includes('PLAY');
+
+    if (!isInitialLoad) {
+        if (!allPlayers[myId] && !isPlayMenuVisible) {
             allPlayers[myId] = player;
         }
 
@@ -1215,6 +1059,7 @@ function render() {
             const p = (id === myId) ? player : allPlayers[id];
             
             if (!p.name && id !== myId) continue;
+            if (id === myId && isPlayMenuVisible) continue;
             
             const drawX = p.x;
             const drawY = p.y;
@@ -1230,16 +1075,6 @@ function render() {
             ctx.translate(pRenderX, pRenderY);
             ctx.rotate(drawAngle);
             ctx.drawImage(playerImg, -pScaledW / 2, -pScaledH / 2, pScaledW, pScaledH);
-            
-            if (p.isAttacking) {
-                ctx.beginPath();
-                ctx.moveTo(0, -pScaledH / 2);
-                ctx.lineTo(0, -pScaledH - 300);
-                ctx.strokeStyle = "rgba(230, 126, 34, 0.4)";
-                ctx.lineWidth = 2;
-                ctx.stroke();
-            }
-            
             ctx.restore();
         }
     }
@@ -1252,11 +1087,12 @@ function render() {
         }
     }
 
-    if (isPlaying) {
+    if (!isInitialLoad) {
         for (let id in allPlayers) {
             const p = (id === myId) ? player : allPlayers[id];
             
             if (!p.name && id !== myId) continue;
+            if (id === myId && isPlayMenuVisible) continue;
 
             let drawTeam = p.team || "Civilians";
             let drawRank = p.rank || "• Civilian •";
@@ -1300,6 +1136,7 @@ function render() {
             const p = (id === myId) ? player : allPlayers[id];
             
             if (!p.name && id !== myId) continue;
+            if (id === myId && isPlayMenuVisible) continue;
             
             const pRenderX = p.x - camera.x + ((p.width || 45) / 2);
             const pRenderY = p.y - camera.y + ((p.height || 45) / 2);
