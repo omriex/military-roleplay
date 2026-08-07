@@ -515,6 +515,9 @@ function bindUI() {
         if (lbBody) lbBody.style.display = 'block';
         if (lbToggle) lbToggle.style.transform = 'rotate(180deg)';
         
+        const mobileControls = document.getElementById('mobile-controls');
+        if (mobileControls) mobileControls.style.display = 'block';
+
         if (myId) {
             allPlayers[myId] = player;
             syncPlayer();
@@ -651,6 +654,8 @@ function fixUI() {
             if (blContainer) {
                 blContainer.style.setProperty('display', 'none', 'important');
             }
+            const mobileControls = document.getElementById('mobile-controls');
+            if (mobileControls) mobileControls.style.display = 'none';
         };
         navContainer.insertBefore(homeBtn, shopNavBtn);
     }
@@ -808,17 +813,21 @@ function setupMobileControls() {
     if (!isMobile) return;
     const mobileUI = document.createElement('div');
     mobileUI.id = 'mobile-controls';
-    mobileUI.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; z-index:100000; pointer-events:none;';
+    mobileUI.style.cssText = 'position:fixed; top:0; left:0; width:100vw; height:100vh; z-index:100000; pointer-events:none; display:none;';
     
+    const joySize = 'min(22vw, 130px)';
+    const stickSize = 'min(11vw, 65px)';
+    const btnSize = 'min(18vw, 75px)';
+
     mobileUI.innerHTML = `
-        <div id="left-joystick" style="position:absolute; bottom:30px; left:30px; width:120px; height:120px; background:rgba(0,0,0,0.5); border-radius:50%; pointer-events:auto; touch-action:none;">
-            <div id="left-stick" style="position:absolute; top:50%; left:50%; width:50px; height:50px; background:#e67e22; border-radius:50%; transform:translate(-50%, -50%); box-shadow:0 0 10px rgba(0,0,0,0.8);"></div>
+        <div id="left-joystick" style="position:absolute; bottom:30px; left:30px; width:${joySize}; height:${joySize}; background:rgba(0,0,0,0.6); border:2px solid #111; border-radius:50%; pointer-events:auto; touch-action:none; display:flex; align-items:center; justify-content:center; box-shadow:0 0 15px rgba(0,0,0,0.5);">
+            <div id="left-stick" style="width:${stickSize}; height:${stickSize}; background:radial-gradient(circle, #e67e22 0%, #b8651b 100%); border-radius:50%; box-shadow:0 0 10px rgba(0,0,0,0.8); transition:transform 0.05s ease-out;"></div>
         </div>
-        <div id="right-joystick" style="position:absolute; bottom:30px; right:170px; width:120px; height:120px; background:rgba(0,0,0,0.5); border-radius:50%; pointer-events:auto; touch-action:none;">
-            <div id="right-stick" style="position:absolute; top:50%; left:50%; width:50px; height:50px; background:#e67e22; border-radius:50%; transform:translate(-50%, -50%); box-shadow:0 0 10px rgba(0,0,0,0.8);"></div>
+        <div id="right-joystick" style="position:absolute; bottom:30px; right:30px; width:${joySize}; height:${joySize}; background:rgba(0,0,0,0.6); border:2px solid #111; border-radius:50%; pointer-events:auto; touch-action:none; display:flex; align-items:center; justify-content:center; box-shadow:0 0 15px rgba(0,0,0,0.5);">
+            <div id="right-stick" style="width:${stickSize}; height:${stickSize}; background:radial-gradient(circle, #e67e22 0%, #b8651b 100%); border-radius:50%; box-shadow:0 0 10px rgba(0,0,0,0.8); transition:transform 0.05s ease-out;"></div>
         </div>
-        <button id="mobile-attack-btn" style="position:absolute; bottom:50px; right:30px; width:80px; height:80px; background:rgba(0,0,0,0.5); border:3px solid #e67e22; border-radius:50%; pointer-events:auto; touch-action:none; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 15px rgba(0,0,0,0.5);">
-            <svg viewBox="0 0 24 24" width="40" height="40" fill="#e67e22"><circle cx="12" cy="12" r="8"></circle></svg>
+        <button id="mobile-attack-btn" style="position:absolute; bottom:30px; right:calc(30px + ${joySize} + 20px); width:${btnSize}; height:${btnSize}; background:rgba(0,0,0,0.6); border:3px solid #e67e22; border-radius:50%; pointer-events:auto; touch-action:none; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 15px rgba(0,0,0,0.5);">
+            <svg viewBox="0 0 24 24" width="60%" height="60%" fill="#e67e22"><circle cx="12" cy="12" r="8"></circle></svg>
         </button>
         <button id="mobile-chat-btn" style="position:absolute; top:20px; right:120px; width:44px; height:44px; background:#111111; border:none; border-bottom:3px solid #e67e22; border-radius:6px; pointer-events:auto; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 15px rgba(0,0,0,0.5);">
             <svg viewBox="0 0 24 24" width="20" height="20" fill="white"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
@@ -826,9 +835,10 @@ function setupMobileControls() {
     `;
     document.body.appendChild(mobileUI);
 
-    function bindJoy(baseId, stickId, joyObj, isAim) {
+    function bindJoy(baseId, stickId, joyObj) {
         const base = document.getElementById(baseId);
         const stick = document.getElementById(stickId);
+        let activeTouchId = null;
         
         function moveStick(e) {
             e.preventDefault();
@@ -837,11 +847,24 @@ function setupMobileControls() {
             let cy = rect.top + rect.height / 2;
             let r = rect.width / 2;
             
-            let touch = Array.from(e.touches).find(t => {
-                let br = base.getBoundingClientRect();
-                return t.clientX >= br.left && t.clientX <= br.right && t.clientY >= br.top && t.clientY <= br.bottom;
-            }) || e.changedTouches[0];
+            if (activeTouchId === null && e.type === 'touchstart') {
+                for (let i = 0; i < e.changedTouches.length; i++) {
+                    let t = e.changedTouches[i];
+                    if (t.clientX >= rect.left && t.clientX <= rect.right && t.clientY >= rect.top && t.clientY <= rect.bottom) {
+                        activeTouchId = t.identifier;
+                        break;
+                    }
+                }
+            }
+            if (activeTouchId === null) return;
             
+            let touch;
+            for (let i = 0; i < e.touches.length; i++) {
+                if (e.touches[i].identifier === activeTouchId) {
+                    touch = e.touches[i];
+                    break;
+                }
+            }
             if (!touch) return;
             
             let dx = touch.clientX - cx;
@@ -853,28 +876,28 @@ function setupMobileControls() {
                 dy = (dy / dist) * r;
             }
             
-            stick.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+            stick.style.transform = `translate(calc(${dx}px), calc(${dy}px))`;
             joyObj.x = dx / r;
             joyObj.y = dy / r;
             joyObj.active = true;
-            
-            if (isAim) {
-                isAttacking = true;
-                document.getElementById('mobile-attack-btn').style.background = "rgba(230,126,34,0.5)";
-            }
         }
         
         function resetStick(e) {
             e.preventDefault();
-            stick.style.transform = `translate(-50%, -50%)`;
+            let ended = false;
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                if (e.changedTouches[i].identifier === activeTouchId) {
+                    ended = true;
+                    break;
+                }
+            }
+            if (!ended && e.type !== 'touchcancel') return;
+            
+            activeTouchId = null;
+            stick.style.transform = `translate(0, 0)`;
             joyObj.x = 0;
             joyObj.y = 0;
             joyObj.active = false;
-            
-            if (isAim) {
-                isAttacking = false;
-                document.getElementById('mobile-attack-btn').style.background = "rgba(0,0,0,0.5)";
-            }
         }
         
         base.addEventListener('touchstart', moveStick, {passive: false});
@@ -883,13 +906,26 @@ function setupMobileControls() {
         base.addEventListener('touchcancel', resetStick, {passive: false});
     }
     
-    bindJoy('left-joystick', 'left-stick', leftJoy, false);
-    bindJoy('right-joystick', 'right-stick', rightJoy, true);
+    bindJoy('left-joystick', 'left-stick', leftJoy);
+    bindJoy('right-joystick', 'right-stick', rightJoy);
     
     const atkBtn = document.getElementById('mobile-attack-btn');
-    atkBtn.addEventListener('touchstart', (e) => { e.preventDefault(); isAttacking = true; atkBtn.style.background = "rgba(230,126,34,0.5)"; });
-    atkBtn.addEventListener('touchend', (e) => { e.preventDefault(); if (!rightJoy.active) isAttacking = false; atkBtn.style.background = "rgba(0,0,0,0.5)"; });
-    atkBtn.addEventListener('touchcancel', (e) => { e.preventDefault(); if (!rightJoy.active) isAttacking = false; atkBtn.style.background = "rgba(0,0,0,0.5)"; });
+    atkBtn.addEventListener('touchstart', (e) => { 
+        e.preventDefault(); 
+        isAttacking = true; 
+        atkBtn.style.background = "rgba(230,126,34,0.4)"; 
+        syncPlayer();
+    });
+    
+    const releaseAtk = (e) => { 
+        e.preventDefault(); 
+        isAttacking = false; 
+        atkBtn.style.background = "rgba(0,0,0,0.6)"; 
+        syncPlayer();
+    };
+    
+    atkBtn.addEventListener('touchend', releaseAtk);
+    atkBtn.addEventListener('touchcancel', releaseAtk);
     
     document.getElementById('mobile-chat-btn').addEventListener('click', () => {
         const chatContainer = document.getElementById('chat-input-container');
