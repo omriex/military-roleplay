@@ -135,7 +135,10 @@ function updateLeaderboard() {
         }
     }
     
-    scoreboardList.innerHTML = html;
+    if (scoreboardList.dataset.lastHtml !== html) {
+        scoreboardList.innerHTML = html;
+        scoreboardList.dataset.lastHtml = html;
+    }
     if (playerAttr) playerAttr.innerText = (player.money || 0).toString();
 }
 
@@ -177,7 +180,10 @@ onAuthStateChanged(auth, (user) => {
                 }
 
                 if (now - remote.localLastUpdate > 15000) {
-                    delete allPlayers[id];
+                    if (!allPlayers[id]) allPlayers[id] = {};
+                    allPlayers[id].zombie = true;
+                    allPlayers[id].lastSeen = remote.lastSeen;
+                    allPlayers[id].localLastUpdate = remote.localLastUpdate;
                     continue;
                 }
                 
@@ -533,11 +539,31 @@ function bindUI() {
             }
         });
     }
+    
+    // Bind Sub-Divisions toggles
+    setTimeout(() => {
+        const els = Array.from(document.querySelectorAll('*')).filter(el => el.children.length === 0 && el.textContent && el.textContent.includes('SUB-DIVISIONS'));
+        els.forEach(el => {
+            el.style.cursor = 'pointer';
+            el.addEventListener('click', (e) => {
+                e.stopPropagation();
+                let container = el.nextElementSibling || (el.parentElement ? el.parentElement.nextElementSibling : null);
+                if (container) {
+                    container.style.display = (container.style.display === 'none' || container.style.display === '') ? 'block' : 'none';
+                }
+            });
+        });
+    }, 2000);
 }
 
 function fixUI() {
     const fixStyle = document.createElement('style');
     fixStyle.innerHTML = `
+        ::-webkit-scrollbar { width: 8px !important; }
+        ::-webkit-scrollbar-track { background: rgba(10, 10, 10, 0.5) !important; border-radius: 4px !important; }
+        ::-webkit-scrollbar-thumb { background: #e67e22 !important; border-radius: 4px !important; }
+        ::-webkit-scrollbar-thumb:hover { background: #d35400 !important; }
+        #division-selector-ui { overflow-x: hidden !important; }
         *, *::before, *::after { box-shadow: none !important; text-shadow: none !important; }
         #my-score-div, #my-score-div *, .ui-text-scoreboard, .ui-text-scoreboard div { user-select: none !important; -webkit-user-select: none !important; -moz-user-select: none !important; -ms-user-select: none !important; }
         input:hover, textarea:hover, #note-textarea:hover, #player-input-field:hover, select:hover { transform: none !important; filter: none !important; }
@@ -883,7 +909,7 @@ function resolvePlayerCollisions(dt) {
     for (let id in allPlayers) {
         if (id === myId) continue;
         const p2 = allPlayers[id];
-        if (p2.x === undefined || p2.y === undefined) continue;
+        if (p2.zombie || p2.x === undefined || p2.y === undefined) continue;
 
         const p2Radius = (p2.width || 45) * (p2.scale || 1) / 2;
         let p2cx = p2.x + ((p2.width || 45) / 2);
@@ -1015,6 +1041,7 @@ function update(dt) {
     for (let id in allPlayers) {
         if (id === myId) continue;
         let p = allPlayers[id];
+        if (p.zombie) continue;
         
         if (p.targetX !== undefined) {
             p.x += (p.targetX - p.x) * dt * 12;
@@ -1071,7 +1098,7 @@ function render() {
         for (let id in allPlayers) {
             const p = (id === myId) ? player : allPlayers[id];
             
-            if (!p.name && id !== myId) continue;
+            if ((!p.name || p.zombie) && id !== myId) continue;
             if (id === myId && isPlayMenuVisible) continue;
             
             const drawX = p.x;
@@ -1104,7 +1131,7 @@ function render() {
         for (let id in allPlayers) {
             const p = (id === myId) ? player : allPlayers[id];
             
-            if (!p.name && id !== myId) continue;
+            if ((!p.name || p.zombie) && id !== myId) continue;
             if (id === myId && isPlayMenuVisible) continue;
 
             let drawTeam = p.team || "Civilians";
@@ -1148,7 +1175,7 @@ function render() {
         for (let id in allPlayers) {
             const p = (id === myId) ? player : allPlayers[id];
             
-            if (!p.name && id !== myId) continue;
+            if ((!p.name || p.zombie) && id !== myId) continue;
             if (id === myId && isPlayMenuVisible) continue;
             
             const pRenderX = p.x - camera.x + ((p.width || 45) / 2);
