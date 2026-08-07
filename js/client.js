@@ -260,7 +260,7 @@ let assetsLoaded = 0;
 
 const outfitOffsets = {
     uniform: { x: 0, y: 0, w: 64, h: 64 },
-    cap: { x: 1.25, y: -5, w: 60, h: 71 }
+    cap: { x: 0, y: -5, w: 60, h: 71 }
 };
 
 const keys = {
@@ -1279,8 +1279,8 @@ function gameLoop(now) {
 
 (function() {
     const lockerHTML = `
-        <div id="custom-military-locker" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.7); z-index: 10005; align-items: center; justify-content: center;">
-            <div style="background: rgba(15, 15, 15, 0.98); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; width: 400px; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.8);">
+        <div id="custom-military-locker" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: transparent; z-index: 10005; align-items: center; justify-content: center;">
+            <div style="background: rgba(15, 15, 15, 0.98); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; width: 400px; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.8); animation: divFadeIn 0.2s ease-out forwards;">
                 <div style="background: #e67e22; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center;">
                     <h4 style="color: white; font-weight: 800; text-transform: uppercase; letter-spacing: 2px; font-size: 16px; margin: 0;">Military Locker</h4>
                     <button id="close-locker-btn" style="background: #c0392b; border: none; color: white; border-radius: 4px; padding: 4px 10px; cursor: pointer; font-weight: bold;">X</button>
@@ -1310,7 +1310,7 @@ function gameLoop(now) {
         if (!gameData || !gameData.variables) return false;
         const pw = player.width || 45;
         const ph = player.height || 45;
-        const P = 40;
+        const P = 48;
         for (const key in gameData.variables) {
             if (key.toLowerCase().includes('locker') && gameData.variables[key].default) {
                 const r = gameData.variables[key].default;
