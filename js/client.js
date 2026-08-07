@@ -1279,7 +1279,7 @@ function gameLoop(now) {
 
 (function() {
     const lockerHTML = `
-        <div id="locker-prompt" style="display: none; position: fixed; top: 60px; left: 50%; transform: translateX(-50%); background: #e67e22; color: white; padding: 10px 20px; border-radius: 4px; font-weight: 800; font-family: 'Segoe UI', sans-serif; text-transform: uppercase; letter-spacing: 2px; font-size: 14px; z-index: 10000; box-shadow: 0 5px 15px rgba(0,0,0,0.5); pointer-events: none; animation: divFadeIn 0.2s ease-out forwards;">PRESS [F] TO INTERACT</div>
+        <div id="locker-prompt" style="position: fixed; top: -100px; left: 50%; transform: translateX(-50%); background: #e67e22; color: white; padding: 10px 20px; border-radius: 4px; font-weight: 800; font-family: 'Segoe UI', sans-serif; text-transform: uppercase; letter-spacing: 2px; font-size: 14px; z-index: 10000; box-shadow: 0 5px 15px rgba(0,0,0,0.5); pointer-events: none; transition: top 0.3s ease-out;">PRESS [F] TO INTERACT</div>
         <div id="custom-military-locker" style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(10, 10, 10, 0.98); border: 1px solid #333; border-bottom: 4px solid #e67e22; border-radius: 12px; width: 400px; max-height: 480px; box-shadow: 0 20px 50px rgba(0,0,0,0.9); font-family: 'Segoe UI', sans-serif; z-index: 10000; display: none; flex-direction: column; animation: divFadeIn 0.3s ease-out forwards; overflow: hidden;">
             <div style="background: #e67e22; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
                 <span style="color: white; font-weight: 800; text-transform: uppercase; letter-spacing: 2px; font-size: 16px;">Military Locker</span>
@@ -1307,10 +1307,15 @@ function gameLoop(now) {
     setInterval(() => {
         const prompt = document.getElementById('locker-prompt');
         if (!prompt) return;
-        if (isInLockerRegion() && lockerUI.style.display !== 'flex' && player.team === 'Military') {
-            if (prompt.style.display !== 'block') prompt.style.display = 'block';
+        const inRegion = isInLockerRegion();
+        if (inRegion && lockerUI.style.display !== 'flex' && player.team === 'Military') {
+            if (prompt.style.top !== '20px') prompt.style.top = '20px';
         } else {
-            if (prompt.style.display !== 'none') prompt.style.display = 'none';
+            if (prompt.style.top !== '-100px') prompt.style.top = '-100px';
+        }
+        
+        if (!inRegion && lockerUI.style.display === 'flex') {
+            lockerUI.style.display = 'none';
         }
     }, 100);
 
