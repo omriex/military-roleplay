@@ -540,7 +540,6 @@ function bindUI() {
         });
     }
     
-    // Bind Sub-Divisions toggles
     setTimeout(() => {
         const els = Array.from(document.querySelectorAll('*')).filter(el => el.children.length === 0 && el.textContent && el.textContent.includes('SUB-DIVISIONS'));
         els.forEach(el => {
