@@ -1381,5 +1381,3 @@ function gameLoop(now) {
     render();
     requestAnimationFrame(gameLoop);
 }
-
-const GAME_JSON = typeof window.GAME_JSON !== 'undefined' ? window.GAME_JSON : {};
