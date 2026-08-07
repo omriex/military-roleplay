@@ -1,4 +1,96 @@
-} else {
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+import { getDatabase, ref, set, onValue, onDisconnect } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
+import { getAuth, signInAnonymously, onAuthStateChanged, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+
+const firebaseConfig = {
+    apiKey: "AIzaSyBxu2JIxVLsCTi91rfEt3X58Q3d2uaocAw",
+    authDomain: "military-roleplay-io.firebaseapp.com",
+    databaseURL: "https://military-roleplay-io-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "military-roleplay-io",
+    storageBucket: "military-roleplay-io.firebasestorage.app",
+    messagingSenderId: "823014317267",
+    appId: "1:823014317267:web:da61c79a248423ff5f4826"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+const auth = getAuth(app);
+const googleProvider = new GoogleAuthProvider();
+
+let myId = null;
+let allPlayers = {};
+let isPlaying = false;
+let previousLeaderboardHTML = '';
+
+let isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || ('ontouchstart' in window);
+let leftJoy = { x: 0, y: 0, active: false };
+let rightJoy = { x: 0, y: 0, active: false };
+let isAttacking = false;
+
+const militaryRanks = [
+    "• [E1] Private •", "• [E2] Private First Class •", "• [E3] Corporal •",
+    "• [E4] Lance Corporal •", "• [E5] Sergeant •", "• [E6] Staff Sergeant •",
+    "• [E7] Sergeant First Class •", "• [E8] Master Sergeant •", "• [E9] Doesn't Exist •",
+    "• [E10] First Sergeant •", "• [E11] Sergeant Major •", "• [E12] Command Sergeant Major •",
+    "• [O1] Second Lieutenant •", "• [O2] First Lieutenant •", "• [O3] Captain •",
+    "• [O4] Major •", "• [O5] Lieutenant Colonel •", "• [O6] Colonel •",
+    "• [O7] Brigadier General •", "• [O8] Major General •", "• [O9] Lieutenant General •",
+    "• [O10] General •"
+];
+
+let player = {
+    name: "",
+    email: "",
+    team: "Civilians",
+    rank: "• Civilian •",
+    money: 0,
+    nextMoneyRewardTime: 0,
+    x: 0, y: 0, 
+    width: 45, height: 45, 
+    vx: 0, vy: 0,
+    angle: 0,
+    scale: 1,
+    bopTimer: 0,
+    chats: [],
+    activeChats: []
+};
+
+function syncPlayer() {
+    if (!myId) return;
+    set(ref(db, `players/${myId}`), {
+        name: player.name,
+        email: player.email,
+        team: player.team,
+        rank: player.rank,
+        money: player.money,
+        x: player.x,
+        y: player.y,
+        angle: player.angle,
+        scale: player.scale,
+        isAttacking: isAttacking,
+        chats: player.chats,
+        lastSeen: Date.now()
+    });
+}
+
+function assignRank() {
+    if (player.email === "omarshafee037@gmail.com") {
+        player.rank = "• [O10] General •";
+    } else if (player.team === "Military") {
+        player.rank = militaryRanks[0];
+    } else {
+        player.rank = "• Civilian •";
+    }
+}
+
+function spawnPlayer(regionName) {
+    if (typeof GAME_JSON === 'undefined') return;
+    const gameData = GAME_JSON.data || GAME_JSON;
+    if (gameData.variables && gameData.variables[regionName] && gameData.variables[regionName].default) {
+        const spawnRegion = gameData.variables[regionName].default;
+        player.x = spawnRegion.x + (Math.random() * spawnRegion.width) - (player.width / 2);
+        player.y = spawnRegion.y + (Math.random() * spawnRegion.height) - (player.height / 2);
+            } else {
         player.x = 1500;
         player.y = 2200;
     }
