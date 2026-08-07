@@ -125,7 +125,7 @@ function updateLeaderboard() {
     const sortedPlayers = Object.values(allPlayers).sort((a, b) => (b.money || 0) - (a.money || 0));
 
     for (const p of sortedPlayers) {
-        if (p && p.name) {
+        if (p && p.name && !p.zombie) {
             let tColor = p.team === 'Military' ? '#22b534' : '#b7ffa1';
             
             html += `<div style="display: flex; justify-content: space-between; width: 100%;">
@@ -172,6 +172,7 @@ onAuthStateChanged(auth, (user) => {
                 if (p_existing) {
                     if (p_existing.lastSeen !== remote.lastSeen) {
                         remote.localLastUpdate = now;
+                        p_existing.zombie = false;
                     } else {
                         remote.localLastUpdate = p_existing.localLastUpdate || now;
                     }
@@ -193,13 +194,13 @@ onAuthStateChanged(auth, (user) => {
                         targetX: remote.x,
                         targetY: remote.y,
                         targetAngle: remote.angle,
+                        zombie: true,
                         activeChats: [],
                         seenChats: new Set()
                     };
                     if (remote.chats) {
                         remote.chats.forEach(rc => {
                             allPlayers[id].seenChats.add(rc.t);
-                            allPlayers[id].activeChats.push({ m: rc.m, t: rc.t, localStartTime: performance.now() });
                         });
                     }
                 } else {
@@ -558,11 +559,13 @@ function bindUI() {
 function fixUI() {
     const fixStyle = document.createElement('style');
     fixStyle.innerHTML = `
-        ::-webkit-scrollbar { width: 8px !important; }
-        ::-webkit-scrollbar-track { background: rgba(10, 10, 10, 0.5) !important; border-radius: 4px !important; }
+        ::-webkit-scrollbar { width: 6px !important; }
+        ::-webkit-scrollbar-track { background: transparent !important; }
         ::-webkit-scrollbar-thumb { background: #e67e22 !important; border-radius: 4px !important; }
         ::-webkit-scrollbar-thumb:hover { background: #d35400 !important; }
         #division-selector-ui { overflow-x: hidden !important; }
+        #division-selector-ui .modal-body { padding-right: 2px !important; }
+        #division-selector-ui .row { margin-right: 0 !important; margin-left: 0 !important; width: 100% !important; }
         *, *::before, *::after { box-shadow: none !important; text-shadow: none !important; }
         #my-score-div, #my-score-div *, .ui-text-scoreboard, .ui-text-scoreboard div { user-select: none !important; -webkit-user-select: none !important; -moz-user-select: none !important; -ms-user-select: none !important; }
         input:hover, textarea:hover, #note-textarea:hover, #player-input-field:hover, select:hover { transform: none !important; filter: none !important; }
