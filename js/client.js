@@ -90,7 +90,7 @@ function spawnPlayer(regionName) {
         const spawnRegion = gameData.variables[regionName].default;
         player.x = spawnRegion.x + (Math.random() * spawnRegion.width) - (player.width / 2);
         player.y = spawnRegion.y + (Math.random() * spawnRegion.height) - (player.height / 2);
-            } else {
+    } else {
         player.x = 1500;
         player.y = 2200;
     }
@@ -838,8 +838,7 @@ function setupMobileControls() {
             let r = rect.width / 2;
             
             let touch = Array.from(e.touches).find(t => {
-                let br = base.getBoundingClientRect();
-                return t.clientX >= br.left - 50 && t.clientX <= br.right + 50 && t.clientY >= br.top - 50 && t.clientY <= br.bottom + 50;
+                return t.clientX >= rect.left - 50 && t.clientX <= rect.right + 50 && t.clientY >= rect.top - 50 && t.clientY <= rect.bottom + 50;
             }) || e.changedTouches[0];
             
             if (!touch) return;
