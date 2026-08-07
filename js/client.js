@@ -260,7 +260,7 @@ let assetsLoaded = 0;
 
 const outfitOffsets = {
     uniform: { x: 0, y: 0, w: 64, h: 64 },
-    cap: { x: 2, y: -5, w: 60, h: 71 }
+    cap: { x: 1, y: -5, w: 60, h: 71 }
 };
 
 const keys = {
@@ -1295,10 +1295,13 @@ function gameLoop(now) {
     function isInLockerRegion() {
         const gameData = GAME_JSON.data || GAME_JSON;
         if (!gameData || !gameData.variables) return false;
+        const pw = player.width || 45;
+        const ph = player.height || 45;
         for (const key in gameData.variables) {
             if (key.toLowerCase().includes('locker') && gameData.variables[key].default) {
                 const r = gameData.variables[key].default;
-                if (Math.abs(player.x - r.x) <= r.width / 2 && Math.abs(player.y - r.y) <= r.height / 2) {
+                if (player.x < r.x + r.width && player.x + pw > r.x &&
+                    player.y < r.y + r.height && player.y + ph > r.y) {
                     return true;
                 }
             }
