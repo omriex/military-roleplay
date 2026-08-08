@@ -308,7 +308,7 @@ const outfitOffsets = {
 
 const keys = {
     w: false, a: false, s: false, d: false, c: false, shift: false,
-    arrowup: false, arrowleft: false, arrowdown: false, arrowright: false
+    arrowup: false, arrowleft: false, arrowdown: false, arrowright: false, ' ': false
 };
 let mouseX = 0, mouseY = 0;
 
@@ -1100,7 +1100,18 @@ function update(dt) {
         inputY /= length;
     }
     
-    if (keys['shift'] && isMoving) {
+    let intentCrouch = keys['c'];
+    let intentSprint = keys['shift'] && isMoving;
+    let intentJump = keys[' '];
+
+    if (intentCrouch) {
+        intentSprint = false;
+        intentJump = false;
+    } else if (intentSprint) {
+        intentJump = false;
+    }
+
+    if (intentSprint) {
         player.bopTimer += dt;
     } else {
         player.bopTimer = 0;
@@ -1112,7 +1123,7 @@ function update(dt) {
     }
     
     if (player.crouchAmount === undefined) player.crouchAmount = 0;
-    if (keys['c']) {
+    if (intentCrouch) {
         player.crouchAmount = Math.min(1, player.crouchAmount + dt * 8);
     } else {
         player.crouchAmount = Math.max(0, player.crouchAmount - dt * 8);
@@ -1121,7 +1132,7 @@ function update(dt) {
     
     if (player.jumpCooldown === undefined) player.jumpCooldown = 0;
     if (player.jumpCooldown > 0) player.jumpCooldown -= dt;
-    if (keys[' '] && player.jumpCooldown <= 0) {
+    if (intentJump && player.jumpCooldown <= 0) {
         player.jumpCooldown = 0.8;
     }
     
@@ -1137,8 +1148,8 @@ function update(dt) {
     
     const friction = Math.pow(0.001, dt);
     let accel = 1493; 
-    if (keys['shift']) accel = 1866; 
-    if (keys['c']) accel = 663; 
+    if (intentSprint) accel = 1866; 
+    if (intentCrouch) accel = 663; 
     
     player.vx += inputX * accel * dt;
     player.vy += inputY * accel * dt;
