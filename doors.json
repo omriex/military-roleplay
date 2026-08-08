@@ -1,0 +1,497 @@
+[
+  {
+    "id": "door_1786154135725_450",
+    "x": 960,
+    "y": 1408,
+    "width": 196,
+    "height": 20,
+    "team": "Raiders",
+    "rotation": 0
+  },
+  {
+    "id": "door_1786154139117_309",
+    "x": 768,
+    "y": 1920,
+    "width": 196,
+    "height": 20,
+    "team": "Raiders",
+    "rotation": 90
+  },
+  {
+    "id": "door_1786154140493_202",
+    "x": 1152,
+    "y": 1920,
+    "width": 196,
+    "height": 20,
+    "team": "Raiders",
+    "rotation": 90
+  },
+  {
+    "id": "door_1786154142814_71",
+    "x": 960,
+    "y": 2176,
+    "width": 196,
+    "height": 20,
+    "team": "Raiders",
+    "rotation": 180
+  },
+  {
+    "id": "door_1786154166405_734",
+    "x": 544,
+    "y": 2688,
+    "width": 128,
+    "height": 20,
+    "team": "Raiders",
+    "rotation": 0
+  },
+  {
+    "id": "door_1786154198438_264",
+    "x": 832,
+    "y": 2528,
+    "width": 128,
+    "height": 20,
+    "team": "Raiders",
+    "rotation": 90
+  },
+  {
+    "id": "door_1786154202758_896",
+    "x": 288,
+    "y": 1152,
+    "width": 128,
+    "height": 20,
+    "team": "Raiders",
+    "rotation": 180
+  },
+  {
+    "id": "door_1786154309332_732",
+    "x": 3232,
+    "y": 960,
+    "width": 128,
+    "height": 20,
+    "team": "Military Police",
+    "rotation": 0
+  },
+  {
+    "id": "door_1786154311589_803",
+    "x": 4064,
+    "y": 960,
+    "width": 128,
+    "height": 20,
+    "team": "Military Police",
+    "rotation": 0
+  },
+  {
+    "id": "door_1786154313357_304",
+    "x": 3712,
+    "y": 480,
+    "width": 128,
+    "height": 20,
+    "team": "Military Police",
+    "rotation": 90
+  },
+  {
+    "id": "door_1786154319349_451",
+    "x": 3712,
+    "y": 2112,
+    "width": 196,
+    "height": 20,
+    "team": "Military Police",
+    "rotation": 180
+  },
+  {
+    "id": "door_1786154335910_343",
+    "x": 5984,
+    "y": 1792,
+    "width": 128,
+    "height": 20,
+    "team": "Secret Service",
+    "rotation": 180
+  },
+  {
+    "id": "door_1786154336493_541",
+    "x": 5792,
+    "y": 1792,
+    "width": 128,
+    "height": 20,
+    "team": "Secret Service",
+    "rotation": 180
+  },
+  {
+    "id": "door_1786154337509_417",
+    "x": 5792,
+    "y": 1664,
+    "width": 128,
+    "height": 20,
+    "team": "Secret Service",
+    "rotation": 180
+  },
+  {
+    "id": "door_1786154338341_515",
+    "x": 5984,
+    "y": 1664,
+    "width": 128,
+    "height": 20,
+    "team": "Secret Service",
+    "rotation": 180
+  },
+  {
+    "id": "door_1786154362964_952",
+    "x": 5472,
+    "y": 1472,
+    "width": 196,
+    "height": 20,
+    "team": "Secret Service",
+    "rotation": 270
+  },
+  {
+    "id": "door_1786154364917_415",
+    "x": 6304,
+    "y": 1472,
+    "width": 196,
+    "height": 20,
+    "team": "Secret Service",
+    "rotation": 270
+  },
+  {
+    "id": "door_1786154366645_566",
+    "x": 6592,
+    "y": 1344,
+    "width": 196,
+    "height": 20,
+    "team": "Secret Service",
+    "rotation": 0
+  },
+  {
+    "id": "door_1786154370772_788",
+    "x": 6976,
+    "y": 736,
+    "width": 196,
+    "height": 20,
+    "team": "Secret Service",
+    "rotation": 0
+  },
+  {
+    "id": "door_1786154373541_647",
+    "x": 5888,
+    "y": 384,
+    "width": 196,
+    "height": 20,
+    "team": "Secret Service",
+    "rotation": 0
+  },
+  {
+    "id": "door_1786154378516_42",
+    "x": 5472,
+    "y": 480,
+    "width": 128,
+    "height": 20,
+    "team": "Secret Service",
+    "rotation": 90
+  },
+  {
+    "id": "door_1786154391054_357",
+    "x": 8192,
+    "y": 1760,
+    "width": 128,
+    "height": 20,
+    "team": "Secret Service",
+    "rotation": 90
+  },
+  {
+    "id": "door_1786154391789_406",
+    "x": 8192,
+    "y": 1568,
+    "width": 128,
+    "height": 20,
+    "team": "Secret Service",
+    "rotation": 90
+  },
+  {
+    "id": "door_1786154417023_975",
+    "x": 9120,
+    "y": 1408,
+    "width": 128,
+    "height": 20,
+    "team": "Secret Service",
+    "rotation": 180
+  },
+  {
+    "id": "door_1786154421085_300",
+    "x": 9120,
+    "y": 1792,
+    "width": 128,
+    "height": 20,
+    "team": "Secret Service",
+    "rotation": 180
+  },
+  {
+    "id": "door_1786154423198_598",
+    "x": 9120,
+    "y": 1152,
+    "width": 128,
+    "height": 20,
+    "team": "Secret Service",
+    "rotation": 180
+  },
+  {
+    "id": "door_1786154424086_933",
+    "x": 9120,
+    "y": 768,
+    "width": 128,
+    "height": 20,
+    "team": "Secret Service",
+    "rotation": 180
+  },
+  {
+    "id": "door_1786154425502_954",
+    "x": 9120,
+    "y": 512,
+    "width": 128,
+    "height": 20,
+    "team": "Secret Service",
+    "rotation": 180
+  },
+  {
+    "id": "door_1786154426950_255",
+    "x": 9120,
+    "y": 128,
+    "width": 128,
+    "height": 20,
+    "team": "Secret Service",
+    "rotation": 180
+  },
+  {
+    "id": "door_1786154432302_212",
+    "x": 9120,
+    "y": 2048,
+    "width": 128,
+    "height": 20,
+    "team": "Secret Service",
+    "rotation": 180
+  },
+  {
+    "id": "door_1786154435630_252",
+    "x": 9120,
+    "y": 2432,
+    "width": 128,
+    "height": 20,
+    "team": "Secret Service",
+    "rotation": 180
+  },
+  {
+    "id": "door_1786154501350_974",
+    "x": 11072,
+    "y": 2752,
+    "width": 196,
+    "height": 20,
+    "team": "SPU",
+    "rotation": 90
+  },
+  {
+    "id": "door_1786154505086_427",
+    "x": 11648,
+    "y": 2720,
+    "width": 128,
+    "height": 20,
+    "team": "SPU",
+    "rotation": 90
+  },
+  {
+    "id": "door_1786154511910_259",
+    "x": 11328,
+    "y": 3584,
+    "width": 196,
+    "height": 20,
+    "team": "SPU",
+    "rotation": 180
+  },
+  {
+    "id": "door_1786154515430_145",
+    "x": 11648,
+    "y": 3968,
+    "width": 196,
+    "height": 20,
+    "team": "SPU",
+    "rotation": 270
+  },
+  {
+    "id": "door_1786154518646_926",
+    "x": 11328,
+    "y": 4352,
+    "width": 196,
+    "height": 20,
+    "team": "SPU",
+    "rotation": 0
+  },
+  {
+    "id": "door_1786154524245_468",
+    "x": 10848,
+    "y": 4704,
+    "width": 128,
+    "height": 20,
+    "team": "SPU",
+    "rotation": 90
+  },
+  {
+    "id": "door_1786154528710_842",
+    "x": 10848,
+    "y": 5344,
+    "width": 128,
+    "height": 20,
+    "team": "SPU",
+    "rotation": 270
+  },
+  {
+    "id": "door_1786154531229_969",
+    "x": 11136,
+    "y": 5472,
+    "width": 128,
+    "height": 20,
+    "team": "SPU",
+    "rotation": 270
+  },
+  {
+    "id": "door_1786154542541_526",
+    "x": 10496,
+    "y": 3968,
+    "width": 196,
+    "height": 20,
+    "team": "SPU",
+    "rotation": 270
+  },
+  {
+    "id": "door_1786154544046_10",
+    "x": 10368,
+    "y": 3968,
+    "width": 196,
+    "height": 20,
+    "team": "SPU",
+    "rotation": 270
+  },
+  {
+    "id": "door_1786154581357_119",
+    "x": 8288,
+    "y": 6016,
+    "width": 128,
+    "height": 20,
+    "team": "Military",
+    "rotation": 0
+  },
+  {
+    "id": "door_1786154584661_813",
+    "x": 8928,
+    "y": 6016,
+    "width": 128,
+    "height": 20,
+    "team": "Military",
+    "rotation": 0
+  },
+  {
+    "id": "door_1786154587357_23",
+    "x": 8928,
+    "y": 7232,
+    "width": 128,
+    "height": 20,
+    "team": "Military",
+    "rotation": 0
+  },
+  {
+    "id": "door_1786154587982_146",
+    "x": 8288,
+    "y": 7232,
+    "width": 128,
+    "height": 20,
+    "team": "Military",
+    "rotation": 0
+  },
+  {
+    "id": "door_1786154591789_512",
+    "x": 8128,
+    "y": 6848,
+    "width": 196,
+    "height": 20,
+    "team": "Military",
+    "rotation": 90
+  },
+  {
+    "id": "door_1786154594228_338",
+    "x": 8128,
+    "y": 6400,
+    "width": 196,
+    "height": 20,
+    "team": "Military",
+    "rotation": 90
+  },
+  {
+    "id": "door_1786154616324_41",
+    "x": 8640,
+    "y": 8256,
+    "width": 196,
+    "height": 20,
+    "team": "MED",
+    "rotation": 0
+  },
+  {
+    "id": "door_1786154620253_274",
+    "x": 8192,
+    "y": 8608,
+    "width": 128,
+    "height": 20,
+    "team": "MED",
+    "rotation": 90
+  },
+  {
+    "id": "door_1786154630380_648",
+    "x": 9088,
+    "y": 8608,
+    "width": 128,
+    "height": 20,
+    "team": "MED",
+    "rotation": 90
+  },
+  {
+    "id": "door_1786154632341_819",
+    "x": 9568,
+    "y": 8256,
+    "width": 128,
+    "height": 20,
+    "team": "MED",
+    "rotation": 180
+  },
+  {
+    "id": "door_1786154634116_53",
+    "x": 9920,
+    "y": 8672,
+    "width": 128,
+    "height": 20,
+    "team": "MED",
+    "rotation": 270
+  },
+  {
+    "id": "door_1786154649365_733",
+    "x": 4672,
+    "y": 8192,
+    "width": 196,
+    "height": 20,
+    "team": "Military",
+    "rotation": 0
+  },
+  {
+    "id": "door_1786154650846_30",
+    "x": 5184,
+    "y": 8192,
+    "width": 196,
+    "height": 20,
+    "team": "Military",
+    "rotation": 0
+  },
+  {
+    "id": "door_1786154653589_211",
+    "x": 4352,
+    "y": 8576,
+    "width": 196,
+    "height": 20,
+    "team": "Military",
+    "rotation": 90
+  }
+]
