@@ -40,6 +40,8 @@ function syncPlayer() {
         team: player.team,
         rank: player.rank,
         money: player.money,
+        wearingCap: player.wearingCap || false,
+        wearingUniform: player.wearingUniform || false,
         x: player.x,
         y: player.y,
         angle: player.angle,
@@ -160,13 +162,21 @@ onAuthStateChanged(auth, (user) => {
             const data = snapshot.val() || {};
             const now = Date.now();
             
+            if (!window.remoteTimestampTracker) window.remoteTimestampTracker = {};
+            
             for (let id in data) {
                 if (id === myId) continue;
 
                 let remote = data[id];
                 
-                if (now - (remote.lastSeen || 0) > 15000) {
-                    delete allPlayers[id];
+                if (!window.remoteTimestampTracker[id]) {
+                    window.remoteTimestampTracker[id] = { val: remote.lastSeen, local: now };
+                } else if (remote.lastSeen !== window.remoteTimestampTracker[id].val) {
+                    window.remoteTimestampTracker[id] = { val: remote.lastSeen, local: now };
+                }
+                
+                if (now - window.remoteTimestampTracker[id].local > 15000) {
+                    if (allPlayers[id]) delete allPlayers[id];
                     continue;
                 }
                 
