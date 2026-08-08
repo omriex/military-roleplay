@@ -20,6 +20,25 @@ const googleProvider = new GoogleAuthProvider();
 
 let myId = null;
 let allPlayers = {};
+let allDoors = {};
+let staticDoors = {};
+let firebaseDoors = {};
+
+fetch('doors.json').then(r => r.json()).then(data => {
+    data.forEach(d => {
+        staticDoors[d.id] = d;
+    });
+    mergeDoors();
+}).catch(e => console.log('No doors.json found or error loading:', e));
+
+function mergeDoors() {
+    allDoors = JSON.parse(JSON.stringify(staticDoors));
+    for (let id in firebaseDoors) {
+        if (allDoors[id]) {
+            allDoors[id].isOpen = firebaseDoors[id].isOpen;
+        }
+    }
+}
 
 const militaryRanks = [
     "• [E1] Private •", "• [E2] Private First Class •", "• [E3] Corporal •",
@@ -158,6 +177,10 @@ onAuthStateChanged(auth, (user) => {
         }
         
         onDisconnect(ref(db, `players/${myId}`)).remove();
+        onValue(ref(db, 'doors'), (snapshot) => {
+            firebaseDoors = snapshot.val() || {};
+            mergeDoors();
+        });
         onValue(ref(db, 'players'), (snapshot) => {
             const data = snapshot.val() || {};
             const now = Date.now();
@@ -266,6 +289,8 @@ const tilesheetImg = new Image();
 const playerImg = new Image();
 const militaryCapImg = new Image();
 const militaryUniformImg = new Image();
+const doorClosedImg = new Image();
+const doorOpenImg = new Image();
 let assetsLoaded = 0;
 
 const outfitOffsets = {
@@ -475,6 +500,8 @@ function bindUI() {
                 showNotification("You're already in that team!");
             } else {
                 player.team = "Civilians";
+                player.wearingCap = false;
+                player.wearingUniform = false;
                 spawnPlayer("civilian spawn");
                 syncPlayer();
             }
@@ -835,11 +862,19 @@ function loadImages() {
     militaryUniformImg.crossOrigin = "Anonymous";
     militaryUniformImg.onload = onAssetLoad;
     militaryUniformImg.src = "assets/military-uniform.png";
+    
+    doorClosedImg.crossOrigin = "Anonymous";
+    doorClosedImg.onload = onAssetLoad;
+    doorClosedImg.src = "assets/door-closed.png";
+
+    doorOpenImg.crossOrigin = "Anonymous";
+    doorOpenImg.onload = onAssetLoad;
+    doorOpenImg.src = "assets/door-open.png";
 }
 
 function onAssetLoad() {
     assetsLoaded++;
-    if (assetsLoaded === 4) {
+    if (assetsLoaded === 6) {
         document.getElementById('loading-text').innerText = "LOADING...";
         requestAnimationFrame(() => {
             setTimeout(() => {
@@ -981,6 +1016,56 @@ function resolveCircleCollisions() {
     player.y = cy - (player.height / 2);
 }
 
+function resolveDoorCollisions() {
+    if (!allDoors) return;
+    const currentScale = keys['c'] ? 0.92 : 1;
+    const radius = (player.width * currentScale) / 2;
+    let cx = player.x + (player.width / 2);
+    let cy = player.y + (player.height / 2);
+
+    Object.values(allDoors).forEach(d => {
+        if (d.isOpen) return;
+
+        let dw = d.width;
+        let dh = d.height;
+        if (d.rotation % 180 !== 0) {
+            dw = d.height;
+            dh = d.width;
+        }
+
+        let doorCenterX = d.x + (TILE_SIZE/2);
+        let doorCenterY = d.y + (TILE_SIZE/2);
+
+        let testX = cx;
+        let testY = cy;
+
+        let left = doorCenterX - (dw/2);
+        let right = doorCenterX + (dw/2);
+        let top = doorCenterY - (dh/2);
+        let bottom = doorCenterY + (dh/2);
+
+        if (cx < left) testX = left;
+        else if (cx > right) testX = right;
+        if (cy < top) testY = top;
+        else if (cy > bottom) testY = bottom;
+
+        const distX = cx - testX;
+        const distY = cy - testY;
+        const distance = Math.sqrt(distX * distX + distY * distY);
+
+        if (distance > 0 && distance < radius) {
+            const overlap = radius - distance;
+            const nx = distX / distance;
+            const ny = distY / distance;
+            cx += nx * overlap;
+            cy += ny * overlap;
+        }
+    });
+    
+    player.x = cx - (player.width / 2);
+    player.y = cy - (player.height / 2);
+}
+
 function update(dt) {
     const playMenu = document.getElementById('play-menu');
     if (playMenu && playMenu.style.display !== 'none') return;
@@ -1025,6 +1110,7 @@ function update(dt) {
     
     for (let i = 0; i < 3; i++) {
         resolveCircleCollisions();
+        resolveDoorCollisions();
         resolvePlayerCollisions(dt);
     }
     
@@ -1099,6 +1185,21 @@ function render() {
             const destY = Math.floor(cy * CHUNK_SIZE - camera.y);
             ctx.drawImage(bgChunks[cy][cx], destX, destY);
         }
+    }
+
+    if (allDoors) {
+        Object.values(allDoors).forEach(d => {
+            const renderX = d.x - camera.x + (TILE_SIZE/2);
+            const renderY = d.y - camera.y + (TILE_SIZE/2);
+            ctx.save();
+            ctx.translate(renderX, renderY);
+            ctx.rotate(d.rotation * Math.PI / 180);
+            const img = d.isOpen ? doorOpenImg : doorClosedImg;
+            if (img.complete && img.naturalWidth > 0) {
+                ctx.drawImage(img, -d.width/2, -d.height/2, d.width, d.height);
+            }
+            ctx.restore();
+        });
     }
 
     const playMenu = document.getElementById('play-menu');
@@ -1255,13 +1356,10 @@ function render() {
                     const bubbleY = nameY - 10 - currentYOffset - bubbleHeight + slideOffsetY; 
                     
                     ctx.fillStyle = "rgba(10, 10, 10, 0.92)";
-                    ctx.strokeStyle = "rgba(255, 255, 255, 0.15)";
-                    ctx.lineWidth = 1;
                     
                     ctx.beginPath();
                     ctx.roundRect(bubbleX, bubbleY, bubbleWidth, bubbleHeight, 8);
                     ctx.fill();
-                    ctx.stroke();
 
                     ctx.fillStyle = "#fff";
                     lines.forEach((line, index) => {
@@ -1318,7 +1416,10 @@ function gameLoop(now) {
         const prompt = document.getElementById('locker-prompt');
         if (!prompt) return;
         const inRegion = isInLockerRegion();
-        if (inRegion && lockerUI.style.display !== 'flex' && player.team === 'Military') {
+        const nearbyDoor = getNearbyDoor();
+        const shouldShowPrompt = (inRegion && lockerUI.style.display !== 'flex' && player.team === 'Military') || (nearbyDoor !== null);
+        
+        if (shouldShowPrompt) {
             if (prompt.style.top !== '20px') prompt.style.top = '20px';
         } else {
             if (prompt.style.top !== '-100px') prompt.style.top = '-100px';
@@ -1328,6 +1429,37 @@ function gameLoop(now) {
             lockerUI.style.display = 'none';
         }
     }, 100);
+
+    function getNearbyDoor() {
+        if (!allDoors) return null;
+        const pw = player.width || 45;
+        const ph = player.height || 45;
+        const P = 40;
+        let nearest = null;
+        let minDist = Infinity;
+        Object.keys(allDoors).forEach(id => {
+            const d = allDoors[id];
+            let dw = d.width;
+            let dh = d.height;
+            if (d.rotation % 180 !== 0) { dw = d.height; dh = d.width; }
+            let doorCenterX = d.x + (TILE_SIZE/2);
+            let doorCenterY = d.y + (TILE_SIZE/2);
+            let left = doorCenterX - (dw/2) - P;
+            let right = doorCenterX + (dw/2) + P;
+            let top = doorCenterY - (dh/2) - P;
+            let bottom = doorCenterY + (dh/2) + P;
+            let cx = player.x + (pw / 2);
+            let cy = player.y + (ph / 2);
+            if (cx > left && cx < right && cy > top && cy < bottom) {
+                let dist = Math.abs(cx - doorCenterX) + Math.abs(cy - doorCenterY);
+                if (dist < minDist) {
+                    minDist = dist;
+                    nearest = { id, door: d };
+                }
+            }
+        });
+        return nearest;
+    }
 
     function isInLockerRegion() {
         const gameData = GAME_JSON.data || GAME_JSON;
@@ -1348,9 +1480,23 @@ function gameLoop(now) {
     }
 
     document.addEventListener('keydown', (e) => {
-        if (e.key.toLowerCase() === 'f' && isInLockerRegion()) {
-            if (player.team === 'Military') {
+        if (e.key.toLowerCase() === 'f') {
+            if (isInLockerRegion() && player.team === 'Military') {
                 lockerUI.style.display = lockerUI.style.display === 'none' ? 'flex' : 'none';
+            }
+            const nearbyDoorObj = getNearbyDoor();
+            if (nearbyDoorObj) {
+                const door = nearbyDoorObj.door;
+                if (door.team !== player.team) {
+                    showNotification("CAN'T OPEN THAT DOOR");
+                } else {
+                    import("https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js").then(({ getDatabase, ref, update }) => {
+                        const db = getDatabase();
+                        update(ref(db, `doors/${nearbyDoorObj.id}`), {
+                            isOpen: !door.isOpen
+                        });
+                    });
+                }
             }
         }
     });
