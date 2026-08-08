@@ -956,7 +956,7 @@ function preRenderMap() {
 }
 
 function resolvePlayerCollisions(dt) {
-    const currentScale = keys['c'] ? 0.92 : 1;
+    const currentScale = player.scale;
     const radius = (player.width * currentScale) / 2;
     let cx = player.x + (player.width / 2);
     let cy = player.y + (player.height / 2);
@@ -992,7 +992,7 @@ function resolvePlayerCollisions(dt) {
 }
 
 function resolveCircleCollisions() {
-    const currentScale = keys['c'] ? 0.92 : 1;
+    const currentScale = player.scale;
     const radius = (player.width * currentScale) / 2;
     let cx = player.x + (player.width / 2);
     let cy = player.y + (player.height / 2);
@@ -1034,7 +1034,7 @@ function resolveCircleCollisions() {
 
 function resolveDoorCollisions() {
     if (!allDoors) return;
-    const currentScale = keys['c'] ? 0.92 : 1;
+    const currentScale = player.scale;
     const radius = (player.width * currentScale) / 2;
     let cx = player.x + (player.width / 2);
     let cy = player.y + (player.height / 2);
@@ -1110,7 +1110,30 @@ function update(dt) {
     if (player.bopTimer > 0) {
         bopScale = Math.sin(player.bopTimer * 15) * 0.05;
     }
-    player.scale = (keys['c'] ? 0.92 : 1) + bopScale;
+    
+    if (player.crouchAmount === undefined) player.crouchAmount = 0;
+    if (keys['c']) {
+        player.crouchAmount = Math.min(1, player.crouchAmount + dt * 8);
+    } else {
+        player.crouchAmount = Math.max(0, player.crouchAmount - dt * 8);
+    }
+    const crouchScale = 1 - (player.crouchAmount * 0.08);
+    
+    if (player.jumpCooldown === undefined) player.jumpCooldown = 0;
+    if (player.jumpCooldown > 0) player.jumpCooldown -= dt;
+    if (keys[' '] && player.jumpCooldown <= 0) {
+        player.jumpCooldown = 0.8;
+    }
+    
+    let jumpScale = 0;
+    if (player.jumpCooldown > 0) {
+        let animProgress = 0.8 - player.jumpCooldown;
+        if (animProgress <= 0.4) {
+            jumpScale = Math.sin((animProgress / 0.4) * Math.PI) * 0.04;
+        }
+    }
+    
+    player.scale = crouchScale + bopScale + jumpScale;
     
     const friction = Math.pow(0.001, dt);
     let accel = 1493; 
