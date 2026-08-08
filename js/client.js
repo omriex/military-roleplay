@@ -510,6 +510,14 @@ function bindUI() {
                 player.team = "Civilians";
                 player.wearingCap = false;
                 player.wearingUniform = false;
+                if (typeof inventoryState !== 'undefined') {
+                    inventoryState.cap = false;
+                    inventoryState.uniform = false;
+                }
+                const capItem = document.querySelector('.draggable-item[data-type="cap"]');
+                if (capItem) capItem.remove();
+                const uniformItem = document.querySelector('.draggable-item[data-type="uniform"]');
+                if (uniformItem) uniformItem.remove();
                 spawnPlayer("civilian spawn");
                 syncPlayer();
             }
