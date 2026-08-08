@@ -32,10 +32,18 @@ fetch('doors.json').then(r => r.json()).then(data => {
 }).catch(e => console.log('No doors.json found or error loading:', e));
 
 function mergeDoors() {
+    let oldDoors = JSON.parse(JSON.stringify(allDoors));
     allDoors = JSON.parse(JSON.stringify(staticDoors));
     for (let id in firebaseDoors) {
         if (allDoors[id]) {
-            allDoors[id].isOpen = firebaseDoors[id].isOpen;
+            let wasOpen = oldDoors[id] ? oldDoors[id].isOpen : false;
+            let isOpen = firebaseDoors[id].isOpen;
+            allDoors[id].isOpen = isOpen;
+            
+            if (wasOpen !== isOpen && oldDoors[id] !== undefined) {
+                let audio = new Audio(isOpen ? 'audio/door-open.mp3' : 'audio/door-close.mp3');
+                audio.play().catch(e => console.log('Audio play error:', e));
+            }
         }
     }
 }
@@ -1490,12 +1498,7 @@ function gameLoop(now) {
                 if (door.team !== player.team) {
                     showNotification("CAN'T OPEN THAT DOOR");
                 } else {
-                    import("https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js").then(({ getDatabase, ref, update }) => {
-                        const db = getDatabase();
-                        update(ref(db, `doors/${nearbyDoorObj.id}`), {
-                            isOpen: !door.isOpen
-                        });
-                    });
+                    set(ref(db, `doors/${nearbyDoorObj.id}/isOpen`), !door.isOpen).catch(e => console.error("Door update error:", e));
                 }
             }
         }
