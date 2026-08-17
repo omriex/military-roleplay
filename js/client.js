@@ -1,4 +1,3 @@
-
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
 import { getDatabase, ref, set, onValue, onDisconnect } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 import { getAuth, signInAnonymously, onAuthStateChanged, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
@@ -67,8 +66,10 @@ function syncPlayer() {
         team: player.team,
         rank: player.rank,
         money: player.money,
-        wearingCap: player.wearingCap || false,
-        wearingUniform: player.wearingUniform || false,
+        cap: player.cap || null,
+        uniform: player.uniform || null,
+        wearingCap: !!player.cap,
+        wearingUniform: !!player.uniform,
         x: player.x,
         y: player.y,
         angle: player.angle,
@@ -214,6 +215,8 @@ onAuthStateChanged(auth, (user) => {
                 if (!allPlayers[id]) {
                     allPlayers[id] = {
                         ...remote,
+                        cap: remote.cap || null,
+                        uniform: remote.uniform || null,
                         targetX: remote.x,
                         targetY: remote.y,
                         targetAngle: remote.angle,
@@ -237,8 +240,10 @@ onAuthStateChanged(auth, (user) => {
                     p.team = remote.team || "Civilians";
                     p.rank = remote.rank || "• Civilian •";
                     p.money = remote.money || 0;
-                    p.wearingCap = remote.wearingCap || false;
-                    p.wearingUniform = remote.wearingUniform || false;
+                    p.cap = remote.cap || null;
+                    p.uniform = remote.uniform || null;
+                    p.wearingCap = !!remote.cap;
+                    p.wearingUniform = !!remote.uniform;
                     p.lastSeen = remote.lastSeen;
                     p.localLastUpdate = Date.now();
                     
@@ -295,8 +300,10 @@ const PLAYER_URL = "assets/player.png";
 
 const tilesheetImg = new Image();
 const playerImg = new Image();
-const militaryCapImg = new Image();
-const militaryUniformImg = new Image();
+const trainingCapImg = new Image();
+const trainingUniformImg = new Image();
+const patrolCapImg = new Image();
+const patrolUniformImg = new Image();
 const doorClosedImg = new Image();
 const doorOpenImg = new Image();
 let assetsLoaded = 0;
@@ -305,6 +312,9 @@ const outfitOffsets = {
     uniform: { x: 0, y: 0, w: 64, h: 64 },
     cap: { x: 0, y: -5, w: 60, h: 71 }
 };
+
+const capImages = { 'training-cap': trainingCapImg, 'patrol-cap': patrolCapImg };
+const uniformImages = { 'training-uniform': trainingUniformImg, 'patrol-uniform': patrolUniformImg };
 
 const keys = {
     w: false, a: false, s: false, d: false, c: false, shift: false,
@@ -326,7 +336,9 @@ let player = {
     scale: 1,
     bopTimer: 0,
     chats: [],
-    activeChats: []
+    activeChats: [],
+    cap: null,
+    uniform: null
 };
 
 let notifTimeout;
@@ -508,16 +520,15 @@ function bindUI() {
                 showNotification("You're already in that team!");
             } else {
                 player.team = "Civilians";
+                player.cap = null;
+                player.uniform = null;
                 player.wearingCap = false;
                 player.wearingUniform = false;
                 if (typeof inventoryState !== 'undefined') {
-                    inventoryState.cap = false;
-                    inventoryState.uniform = false;
+                    inventoryState.cap = null;
+                    inventoryState.uniform = null;
                 }
-                const capItem = document.querySelector('.draggable-item[data-type="cap"]');
-                if (capItem) capItem.remove();
-                const uniformItem = document.querySelector('.draggable-item[data-type="uniform"]');
-                if (uniformItem) uniformItem.remove();
+                document.querySelectorAll('.draggable-item[data-category="cap"], .draggable-item[data-category="uniform"]').forEach(el => el.remove());
                 spawnPlayer("civilian spawn");
                 syncPlayer();
             }
@@ -871,13 +882,21 @@ function loadImages() {
     };
     playerImg.src = "assets/player.png";
 
-    militaryCapImg.crossOrigin = "Anonymous";
-    militaryCapImg.onload = onAssetLoad;
-    militaryCapImg.src = "assets/military-cap.png";
+    trainingCapImg.crossOrigin = "Anonymous";
+    trainingCapImg.onload = onAssetLoad;
+    trainingCapImg.src = "assets/training-cap.png";
 
-    militaryUniformImg.crossOrigin = "Anonymous";
-    militaryUniformImg.onload = onAssetLoad;
-    militaryUniformImg.src = "assets/military-uniform.png";
+    trainingUniformImg.crossOrigin = "Anonymous";
+    trainingUniformImg.onload = onAssetLoad;
+    trainingUniformImg.src = "assets/training-uniform.png";
+
+    patrolCapImg.crossOrigin = "Anonymous";
+    patrolCapImg.onload = onAssetLoad;
+    patrolCapImg.src = "assets/patrol-cap.png";
+
+    patrolUniformImg.crossOrigin = "Anonymous";
+    patrolUniformImg.onload = onAssetLoad;
+    patrolUniformImg.src = "assets/patrol-uniform.png";
     
     doorClosedImg.crossOrigin = "Anonymous";
     doorClosedImg.onload = onAssetLoad;
@@ -890,7 +909,7 @@ function loadImages() {
 
 function onAssetLoad() {
     assetsLoaded++;
-    if (assetsLoaded === 6) {
+    if (assetsLoaded === 8) {
         document.getElementById('loading-text').innerText = "LOADING...";
         requestAnimationFrame(() => {
             setTimeout(() => {
@@ -1283,19 +1302,25 @@ function render() {
             ctx.rotate(drawAngle);
             ctx.drawImage(playerImg, -pScaledW / 2, -pScaledH / 2, pScaledW, pScaledH);
             const outfitRatio = (p.width || 45) / 64;
-            if (p.wearingUniform && militaryUniformImg) {
-                const uw = outfitOffsets.uniform.w * drawScale * outfitRatio;
-                const uh = outfitOffsets.uniform.h * drawScale * outfitRatio;
-                const ux = outfitOffsets.uniform.x * drawScale * outfitRatio;
-                const uy = outfitOffsets.uniform.y * drawScale * outfitRatio;
-                ctx.drawImage(militaryUniformImg, ux - uw / 2, uy - uh / 2, uw, uh);
+            if (p.uniform) {
+                const uniformImg = uniformImages[p.uniform];
+                if (uniformImg) {
+                    const uw = outfitOffsets.uniform.w * drawScale * outfitRatio;
+                    const uh = outfitOffsets.uniform.h * drawScale * outfitRatio;
+                    const ux = outfitOffsets.uniform.x * drawScale * outfitRatio;
+                    const uy = outfitOffsets.uniform.y * drawScale * outfitRatio;
+                    ctx.drawImage(uniformImg, ux - uw / 2, uy - uh / 2, uw, uh);
+                }
             }
-            if (p.wearingCap && militaryCapImg) {
-                const cw = outfitOffsets.cap.w * drawScale * outfitRatio;
-                const ch = outfitOffsets.cap.h * drawScale * outfitRatio;
-                const cx = outfitOffsets.cap.x * drawScale * outfitRatio;
-                const cy = outfitOffsets.cap.y * drawScale * outfitRatio;
-                ctx.drawImage(militaryCapImg, cx - cw / 2, cy - ch / 2, cw, ch);
+            if (p.cap) {
+                const capImg = capImages[p.cap];
+                if (capImg) {
+                    const cw = outfitOffsets.cap.w * drawScale * outfitRatio;
+                    const ch = outfitOffsets.cap.h * drawScale * outfitRatio;
+                    const cx = outfitOffsets.cap.x * drawScale * outfitRatio;
+                    const cy = outfitOffsets.cap.y * drawScale * outfitRatio;
+                    ctx.drawImage(capImg, cx - cw / 2, cy - ch / 2, cw, ch);
+                }
             }
             ctx.restore();
         }
@@ -1438,19 +1463,27 @@ function gameLoop(now) {
 (function() {
     const lockerHTML = `
         <div id="locker-prompt" style="position: fixed; top: -100px; left: 50%; transform: translateX(-50%); background: #e67e22; color: white; padding: 10px 20px; border-radius: 4px; font-weight: 800; font-family: 'Segoe UI', sans-serif; text-transform: uppercase; letter-spacing: 2px; font-size: 14px; z-index: 10000; box-shadow: 0 5px 15px rgba(0,0,0,0.5); pointer-events: none; transition: top 0.3s ease-out;">PRESS [F] TO INTERACT</div>
-        <div id="custom-military-locker" style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(10, 10, 10, 0.98); border: 1px solid #333; border-bottom: 4px solid #e67e22; border-radius: 12px; width: 400px; max-height: 480px; box-shadow: 0 20px 50px rgba(0,0,0,0.9); font-family: 'Segoe UI', sans-serif; z-index: 10000; display: none; flex-direction: column; animation: divFadeIn 0.3s ease-out forwards; overflow: hidden;">
+        <div id="custom-military-locker" style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(10, 10, 10, 0.98); border: 1px solid #333; border-bottom: 4px solid #e67e22; border-radius: 12px; width: 400px; max-height: 560px; box-shadow: 0 20px 50px rgba(0,0,0,0.9); font-family: 'Segoe UI', sans-serif; z-index: 10000; display: none; flex-direction: column; animation: divFadeIn 0.3s ease-out forwards; overflow: hidden;">
             <div style="background: #e67e22; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
                 <span style="color: white; font-weight: 800; text-transform: uppercase; letter-spacing: 2px; font-size: 16px;">Military Locker</span>
                 <button id="close-locker-btn" style="background: #c0392b; border: none; color: white; border-radius: 4px; padding: 4px 10px; cursor: pointer; font-weight: bold; transition: transform 0.1s ease;">X</button>
             </div>
-            <div style="padding: 30px; display: flex; gap: 20px; justify-content: center; overflow-y: auto; color: white;">
+            <div style="padding: 30px; display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; overflow-y: auto; color: white;">
                 <button id="equip-cap-btn" class="action-btn" style="width: 120px !important; height: 120px !important; max-width: none !important; flex-direction: column; gap: 10px; cursor: pointer;">
-                    <img src="assets/military-cap.png" style="width: 64px; height: 64px; object-fit: contain; pointer-events: none;">
-                    <span style="pointer-events: none;">CAP</span>
+                    <img src="assets/training-cap.png" style="width: 64px; height: 64px; object-fit: contain; pointer-events: none;">
+                    <span style="pointer-events: none;">TRAINING CAP</span>
                 </button>
                 <button id="equip-uniform-btn" class="action-btn" style="width: 120px !important; height: 120px !important; max-width: none !important; flex-direction: column; gap: 10px; cursor: pointer;">
-                    <img src="assets/military-uniform.png" style="width: 64px; height: 64px; object-fit: contain; pointer-events: none;">
-                    <span style="pointer-events: none;">UNIFORM</span>
+                    <img src="assets/training-uniform.png" style="width: 64px; height: 64px; object-fit: contain; pointer-events: none;">
+                    <span style="pointer-events: none;">TRAINING UNIFORM</span>
+                </button>
+                <button id="equip-patrol-cap-btn" class="action-btn" style="width: 120px !important; height: 120px !important; max-width: none !important; flex-direction: column; gap: 10px; cursor: pointer;">
+                    <img src="assets/patrol-cap.png" style="width: 64px; height: 64px; object-fit: contain; pointer-events: none;">
+                    <span style="pointer-events: none;">PATROL CAP</span>
+                </button>
+                <button id="equip-patrol-uniform-btn" class="action-btn" style="width: 120px !important; height: 120px !important; max-width: none !important; flex-direction: column; gap: 10px; cursor: pointer;">
+                    <img src="assets/patrol-uniform.png" style="width: 64px; height: 64px; object-fit: contain; pointer-events: none;">
+                    <span style="pointer-events: none;">PATROL UNIFORM</span>
                 </button>
             </div>
         </div>
@@ -1546,16 +1579,22 @@ function gameLoop(now) {
         }
     });
 
-    const inventoryState = { cap: false, uniform: false };
+    const inventoryState = { cap: null, uniform: null };
+
+    function removeCategoryItems(category) {
+        document.querySelectorAll(`.draggable-item[data-category="${category}"]`).forEach(el => el.remove());
+    }
 
     function toggleItem(type) {
-        let existing = document.querySelector(`.draggable-item[data-type="${type}"]`);
-        if (existing) {
-            existing.remove();
-            inventoryState[type] = false;
+        const category = type.includes('cap') ? 'cap' : 'uniform';
+
+        if (inventoryState[category] === type) {
+            removeCategoryItems(category);
+            inventoryState[category] = null;
         } else {
+            removeCategoryItems(category);
             let slotFound = null;
-            for(let i=1; i<=5; i++) {
+            for (let i = 1; i <= 5; i++) {
                 let s = document.getElementById('inv-slot-' + i);
                 if (s && s.children.length === 0) {
                     slotFound = s;
@@ -1564,23 +1603,27 @@ function gameLoop(now) {
             }
             if (slotFound) {
                 let img = document.createElement('img');
-                img.src = `assets/military-${type}.png`;
+                img.src = `assets/${type}.png`;
                 img.dataset.type = type;
+                img.dataset.category = category;
                 img.className = 'draggable-item';
                 img.style.cssText = 'width: 32px; height: 32px; object-fit: contain; cursor: grab; pointer-events: auto; z-index: 10000;';
-                slotFound.innerHTML = '';
                 slotFound.appendChild(img);
-                inventoryState[type] = true;
+                inventoryState[category] = type;
             }
         }
         
-        player.wearingCap = inventoryState.cap;
-        player.wearingUniform = inventoryState.uniform;
+        player.cap = inventoryState.cap;
+        player.uniform = inventoryState.uniform;
+        player.wearingCap = !!player.cap;
+        player.wearingUniform = !!player.uniform;
         if (typeof syncPlayer === 'function') syncPlayer();
     }
 
-    document.getElementById('equip-cap-btn').addEventListener('click', () => toggleItem('cap'));
-    document.getElementById('equip-uniform-btn').addEventListener('click', () => toggleItem('uniform'));
+    document.getElementById('equip-cap-btn').addEventListener('click', () => toggleItem('training-cap'));
+    document.getElementById('equip-uniform-btn').addEventListener('click', () => toggleItem('training-uniform'));
+    document.getElementById('equip-patrol-cap-btn').addEventListener('click', () => toggleItem('patrol-cap'));
+    document.getElementById('equip-patrol-uniform-btn').addEventListener('click', () => toggleItem('patrol-uniform'));
 
     let draggedItem = null;
     let dragOffsetX = 0;
